@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<title>Lumera Host</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-400: #60a5fa;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --blue-800: #1e40af;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --card: #ffffff;
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --danger: #dc2626;
+    --radius: 16px;
+    --shadow: 0 10px 40px rgba(37, 99, 235, 0.12);
+    --shadow-lg: 0 25px 60px rgba(15, 23, 42, 0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Segoe UI", Tahoma, system-ui, sans-serif;
+    background: linear-gradient(160deg, #f8fbff 0%, #eef4ff 45%, #f8fafc 100%);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+  button, input, textarea, select { font: inherit; }
+  a { color: var(--blue-600); text-decoration: none; }
+  .hidden { display: none !important; }
+
+  /* floating orbs */
+  .bg-orbs { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .orb {
+    position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0.45;
+    animation: float 12s ease-in-out infinite;
+  }
+  .orb.a { width: 320px; height: 320px; background: #93c5fd; top: -80px; left: -60px; }
+  .orb.b { width: 280px; height: 280px; background: #bfdbfe; bottom: 10%; right: -40px; animation-delay: -4s; }
+  .orb.c { width: 180px; height: 180px; background: #dbeafe; top: 40%; left: 40%; animation-delay: -7s; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-24px) scale(1.05); }
+  }
+
+  /* AUTH */
+  #auth-screen {
+    position: relative; z-index: 1;
+    min-height: 100vh; display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  @media (max-width: 900px) {
+    #auth-screen { grid-template-columns: 1fr; }
+    .auth-brand { min-height: 220px; }
+  }
+  .auth-panel {
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 20px;
+  }
+  .auth-card {
+    width: 100%; max-width: 420px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 28px 26px;
+    box-shadow: var(--shadow-lg);
+    animation: rise 0.7s ease both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+  }
+  .auth-card h2 { font-size: 1.35rem; margin-bottom: 6px; }
+  .auth-card .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 20px; }
+  .tabs {
+    display: flex; gap: 8px; background: var(--blue-50);
+    padding: 4px; border-radius: 12px; margin-bottom: 18px;
+  }
+  .tabs button {
+    flex: 1; border: none; background: transparent; padding: 10px;
+    border-radius: 10px; cursor: pointer; color: var(--muted); font-weight: 600;
+    transition: 0.2s;
+  }
+  .tabs button.active {
+    background: #fff; color: var(--blue-700);
+    box-shadow: 0 2px 10px rgba(37,99,235,0.12);
+  }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: #fff; outline: none; transition: 0.2s;
+  }
+  .field input:focus, .field textarea:focus {
+    border-color: var(--blue-400);
+    box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
+  }
+  .btn {
+    border: none; border-radius: 12px; padding: 12px 18px;
+    font-weight: 700; cursor: pointer; transition: 0.2s transform, 0.2s box-shadow, 0.2s background;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    width: 100%; background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+    color: #fff; box-shadow: 0 8px 24px rgba(37,99,235,0.35);
+  }
+  .btn-primary:hover { filter: brightness(1.05); }
+  .btn-green {
+    background: linear-gradient(135deg, var(--green), #22c55e);
+    color: #fff; box-shadow: 0 8px 20px rgba(22,163,74,0.3);
+  }
+  .btn-ghost {
+    background: #fff; border: 1px solid var(--line); color: var(--ink);
+  }
+  .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .msg { margin-top: 12px; font-size: 0.88rem; min-height: 1.2em; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--green); }
+
+  .auth-brand {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(145deg, var(--blue-700), var(--blue-500) 55%, #38bdf8);
+    color: #fff; overflow: hidden;
+  }
+  .auth-brand::before {
+    content: ""; position: absolute; inset: -20%;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.2), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,255,255,0.15), transparent 35%);
+    animation: float 10s ease-in-out infinite;
+  }
+  .brand-inner { position: relative; text-align: center; padding: 40px 24px; animation: rise 0.8s 0.1s ease both; }
+  .brand-inner .logo {
+    font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 900; letter-spacing: -1px;
+    text-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  .brand-inner .logo span { opacity: 0.9; font-weight: 700; }
+  .brand-inner p { margin-top: 14px; font-size: 1.05rem; opacity: 0.92; max-width: 320px; margin-inline: auto; line-height: 1.7; }
+  .brand-badges { display: flex; gap: 10px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+  .brand-badges span {
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3);
+    padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; backdrop-filter: blur(8px);
+  }
+
+  /* APP */
+  #app-screen { position: relative; z-index: 1; min-height: 100vh; display: none; flex-direction: column; }
+  #app-screen.show { display: flex; }
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .brand {
+    font-weight: 900; font-size: 1.15rem; color: var(--blue-700);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topbar .brand i {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--blue-600), #38bdf8);
+    display: grid; place-items: center; color: #fff; font-style: normal; font-size: 0.85rem;
+  }
+  .menu-wrap { position: relative; }
+  .menu-btn {
+    width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line);
+    background: #fff; cursor: pointer; font-size: 1.2rem; line-height: 1;
+  }
+  .dropdown {
+    position: absolute; left: 0; top: calc(100% + 8px);
+    min-width: 240px; background: #fff; border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow-lg); padding: 10px;
+    animation: rise 0.25s ease both;
+  }
+  .dropdown .who { padding: 10px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .dropdown .who strong { display: block; }
+  .dropdown .who span { color: var(--muted); font-size: 0.82rem; }
+  .dropdown button {
+    width: 100%; text-align: right; border: none; background: transparent;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  }
+  .dropdown button:hover { background: var(--blue-50); }
+
+  .content { flex: 1; padding: 28px 20px 48px; max-width: 980px; margin: 0 auto; width: 100%; }
+  .hero-dash {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; margin-bottom: 28px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px; box-shadow: var(--shadow); animation: rise 0.5s ease both;
+  }
+  .card-new {
+    flex: 1; min-width: 240px;
+    background: linear-gradient(145deg, #ecfdf5, #fff);
+    border-color: #bbf7d0;
+  }
+  .card-sub {
+    flex: 1; min-width: 240px;
+    background: linear-gradient(145deg, var(--blue-50), #fff);
+  }
+  .card h3 { margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 0.92rem; margin-bottom: 16px; line-height: 1.6; }
+
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  @media (max-width: 700px) { .plans { grid-template-columns: 1fr; } }
+  .plan {
+    border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #fff;
+    transition: 0.2s transform, 0.2s border-color;
+  }
+  .plan:hover { transform: translateY(-3px); border-color: var(--blue-300); }
+  .plan .price { font-size: 1.2rem; font-weight: 800; color: var(--blue-700); }
+  .plan .meta { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+  .plan .soon {
+    margin-top: 10px; font-size: 0.78rem; color: var(--blue-600);
+    background: var(--blue-50); display: inline-block; padding: 4px 8px; border-radius: 8px;
+  }
+
+  .section-title {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 8px 0 14px; font-size: 1.05rem;
+  }
+  .projects { display: grid; gap: 12px; }
+  .project-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 16px 18px; border-radius: 14px; border: 1px solid var(--line);
+    background: #fff; transition: 0.2s box-shadow, 0.2s border-color;
+  }
+  .project-row:hover { border-color: var(--blue-200); box-shadow: var(--shadow); }
+  .project-row .name { font-weight: 700; }
+  .project-row .slug { font-size: 0.82rem; color: var(--muted); direction: ltr; text-align: left; }
+  .project-row .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Project workspace */
+  .ws-head {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .ws-head h2 { font-size: 1.25rem; }
+  .link-box {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    background: var(--blue-50); border: 1px solid var(--blue-100);
+    padding: 10px 12px; border-radius: 12px; direction: ltr;
+  }
+  .link-box code {
+    font-size: 0.85rem; color: var(--blue-800); word-break: break-all; flex: 1;
+  }
+  .files-list { display: grid; gap: 10px; margin-top: 14px; }
+  .file-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff;
+  }
+  .file-row .fn { font-weight: 600; direction: ltr; text-align: left; }
+  .file-row .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .upload-zone {
+    margin-top: 16px; border: 2px dashed var(--blue-200); border-radius: 16px;
+    padding: 22px; text-align: center; background: rgba(255,255,255,0.7);
+    transition: 0.2s border-color, 0.2s background;
+  }
+  .upload-zone.drag { border-color: var(--blue-500); background: var(--blue-50); }
+  .upload-zone input[type=file] { margin-top: 12px; }
+
+  /* Modal */
+  .modal-back {
+    position: fixed; inset: 0; background: rgba(15,23,42,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50; padding: 16px; backdrop-filter: blur(4px);
+  }
+  .modal {
+    width: min(720px, 100%); max-height: 90vh; overflow: auto;
+    background: #fff; border-radius: 18px; padding: 22px;
+    box-shadow: var(--shadow-lg); animation: rise 0.3s ease both;
+  }
+  .modal h3 { margin-bottom: 12px; }
+  .modal textarea {
+    width: 100%; min-height: 280px; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; direction: ltr; text-align: left;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem;
+  }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-start; margin-top: 12px; flex-wrap: wrap; }
+
+  /* Public view */
+  #view-screen { display: none; position: fixed; inset: 0; z-index: 100; background: #fff; }
+  #view-screen.show { display: block; }
+  #view-frame { width: 100%; height: 100%; border: none; }
+  .view-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 36px;
+    background: rgba(15,23,42,0.85); color: #fff; font-size: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; z-index: 2; direction: ltr;
+  }
+  #view-frame.full { height: calc(100% - 36px); margin-top: 36px; }
+
+  .empty {
+    text-align: center; color: var(--muted); padding: 36px 16px;
+    border: 1px dashed var(--line); border-radius: 16px; background: rgba(255,255,255,0.6);
+  }
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+<!-- AUTH -->
+<section id="auth-screen">
+  <div class="auth-panel">
+    <div class="auth-card">
+      <h2>ورود به Lumera Host</h2>
+      <p class="sub">HTML بگذار · لینک بگیر · سایت را منتشر کن</p>
+      <div class="tabs">
+        <button type="button" class="active" id="tab-login">ورود</button>
+        <button type="button" id="tab-signup">ثبت‌نام</button>
+      </div>
+      <form id="auth-form">
+        <div class="field">
+          <label>ایمیل</label>
+          <input type="email" id="auth-email" required placeholder="name@email.com" dir="ltr" autocomplete="email">
+        </div>
+        <div class="field">
+          <label>رمز عبور</label>
+          <input type="password" id="auth-pass" required minlength="6" placeholder="حداقل ۶ کاراکتر" dir="ltr" autocomplete="current-password">
+        </div>
+        <div class="field hidden" id="pass2-wrap">
+          <label>تکرار رمز عبور</label>
+          <input type="password" id="auth-pass2" minlength="6" placeholder="تکرار رمز" dir="ltr" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" type="submit" id="auth-submit">ورود</button>
+        <div class="msg" id="auth-msg"></div>
+      </form>
+    </div>
+  </div>
+  <div class="auth-brand">
+    <div class="brand-inner">
+      <div class="logo">Lumera <span>Host</span></div>
+      <p>میزبانی ساده فایل‌های وب — سریع، آبی و تمیز. پروژه بساز، فایل آپلود کن، لینک عمومی بگیر.</p>
+      <div class="brand-badges">
+        <span>HTML / CSS / JS</span>
+        <span>لینک عمومی</span>
+        <span>ویرایش آنلاین</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="app-screen">
+  <header class="topbar">
+    <div class="brand"><i>LH</i> Lumera Host</div>
+    <div class="menu-wrap">
+      <button class="menu-btn" id="menu-btn" type="button" aria-label="منو">⋮</button>
+      <div class="dropdown hidden" id="menu-drop">
+        <div class="who">
+          <strong id="menu-name">کاربر</strong>
+          <span id="menu-email"></span>
+        </div>
+        <button type="button" id="menu-projects">پروژه‌های من</button>
+        <button type="button" id="menu-logout">خروج</button>
+      </div>
+    </div>
+  </header>
+  <main class="content" id="main-content"></main>
+</section>
+
+<!-- PUBLIC VIEW -->
+<section id="view-screen">
+  <div class="view-bar">
+    <span id="view-label">Lumera Host</span>
+    <a href="#" id="view-home" style="color:#93c5fd">Host Home</a>
+  </div>
+  <iframe id="view-frame" class="full" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"></iframe>
+</section>
+
+<script>
+(function () {
+  const SUPABASE_URL = 'https://cnvxbwdjuwczowaqgmia.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnhid2RqdXdjem93YXFnbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzE5NDQsImV4cCI6MjEwNjUwNzk0NH0.OB5lXXhHQXdnHlJU5azIuHHZ8G339BSNl4aieTDKeX8';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const authScreen = $('#auth-screen');
+  const appScreen = $('#app-screen');
+  const viewScreen = $('#view-screen');
+  const main = $('#main-content');
+
+  let mode = 'login';
+  let session = null;
+  let profile = null;
+  let currentProject = null;
+
+  function publicBase() {
+    return location.origin + location.pathname.replace(/index\.html$/i, '');
+  }
+  function projectUrl(slug) {
+    return publicBase() + '?p=' + encodeURIComponent(slug);
+  }
+
+  // ---------- Public viewer ----------
+  async function tryPublicView() {
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('p');
+    if (!slug) return false;
+    authScreen.classList.add('hidden');
+    appScreen.classList.remove('show');
+    viewScreen.classList.add('show');
+    $('#view-label').textContent = 'Lumera Host · ' + slug;
+    $('#view-home').href = publicBase();
+    try {
+      const { data: proj, error } = await sb.from('host_projects').select('id,name,slug').eq('slug', slug).maybeSingle();
+      if (error || !proj) {
+        document.body.innerHTML = '<div style="font-family:sans-serif;padding:40px;text-align:center"><h2>پروژه پیدا نشد</h2><p style="color:#64748b">لینک نامعتبر است.</p></div>';
+        return true;
+      }
+      const { data: files } = await sb.from('host_files').select('filename,content').eq('project_id', proj.id);
+      const list = files || [];
+      let html = (list.find(f => /^index\.html$/i.test(f.filename)) || list.find(f => /\.html$/i.test(f.filename)) || list[0]);
+      if (!html) {
+        $('#view-frame').srcdoc = '<h2 style="font-family:sans-serif;padding:2rem">فایلی در این پروژه نیست</h2>';
+        return true;
+      }
+      let body = html.content || '';
+      // inline sibling css/js of same project for simple sites
+      const css = list.filter(f => /\.css$/i.test(f.filename));
+      const js = list.filter(f => /\.js$/i.test(f.filename));
+      if (css.length && !/<link[^>]+stylesheet/i.test(body)) {
+        body = body.replace(/<\/head>/i, css.map(c => '<style data-lh="' + c.filename + '">' + c.content + '</style>').join('\n') + '</head>');
+        if (!/<\/head>/i.test(body)) body = css.map(c => '<style>' + c.content + '</style>').join('\n') + body;
+      }
+      if (js.length && !/<script/i.test(body)) {
+        body = body.replace(/<\/body>/i, js.map(j => '<script data-lh="' + j.filename + '">' + j.content.replace(/<\/script>/gi, '<\\/script>') + '</' + 'script>').join('\n') + '</body>');
+      }
+      $('#view-frame').srcdoc = body;
+    } catch (e) {
+      $('#view-frame').srcdoc = '<p style="padding:2rem;font-family:sans-serif">خطا در بارگذاری</p>';
+    }
+    return true;
+  }
+
+  // ---------- Auth UI ----------
+  $('#tab-login').onclick = () => setMode('login');
+  $('#tab-signup').onclick = () => setMode('signup');
+  function setMode(m) {
+    mode = m;
+    $('#tab-login').classList.toggle('active', m === 'login');
+    $('#tab-signup').classList.toggle('active', m === 'signup');
+    $('#pass2-wrap').classList.toggle('hidden', m === 'login');
+    $('#auth-submit').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
+    $('#auth-msg').textContent = '';
+  }
+
+  $('#auth-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const email = $('#auth-email').value.trim().toLowerCase();
+    const pass = $('#auth-pass').value;
+    const msg = $('#auth-msg');
+    msg.className = 'msg';
+    msg.textContent = 'لطفاً صبر کنید...';
+    try {
+      if (mode === 'signup') {
+        const pass2 = $('#auth-pass2').value;
+        if (pass !== pass2) throw new Error('تکرار رمز با رمز عبور یکی نیست');
+        if (pass.length < 6) throw new Error('رمز حداقل ۶ کاراکتر باشد');
+        const { data, error } = await sb.auth.signUp({ email, password: pass });
+        if (error) throw error;
+        if (data.user && !data.session) {
+          msg.className = 'msg ok';
+          msg.textContent = 'ثبت‌نام شد. اگر تأیید ایمیل روشن باشد، از ایمیل تأیید کنید؛ وگرنه وارد شوید.';
+          setMode('login');
+          return;
+        }
+      } else {
+        const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+        if (error) throw error;
+      }
+      await bootApp();
+    } catch (err) {
+      msg.className = 'msg err';
+      msg.textContent = err.message || 'خطا در ورود';
+    }
+  };
+
+  // ---------- Menu ----------
+  $('#menu-btn').onclick = (e) => {
+    e.stopPropagation();
+    $('#menu-drop').classList.toggle('hidden');
+  };
+  document.addEventListener('click', () => $('#menu-drop').classList.add('hidden'));
+  $('#menu-logout').onclick = async () => {
+    await sb.auth.signOut();
+    session = null; profile = null; currentProject = null;
+    appScreen.classList.remove('show');
+    authScreen.classList.remove('hidden');
+  };
+  $('#menu-projects').onclick = () => { currentProject = null; renderDashboard(); };
+
+  async function loadProfile() {
+    const uid = session.user.id;
+    const email = session.user.email || '';
+    let { data } = await sb.from('host_profiles').select('*').eq('id', uid).maybeSingle();
+    if (!data) {
+      await sb.from('host_profiles').upsert({
+        id: uid,
+        email,
+        display_name: email.split('@')[0] || 'user',
+        plan: 'free',
+        project_limit: 1
+      });
+      ({ data } = await sb.from('host_profiles').select('*').eq('id', uid).maybeSingle());
+    }
+    profile = data;
+    $('#menu-name').textContent = (profile && profile.display_name) || email.split('@')[0];
+    $('#menu-email').textContent = email;
+  }
+
+  async function bootApp() {
+    const { data: { session: s } } = await sb.auth.getSession();
+    session = s;
+    if (!session) return;
+    authScreen.classList.add('hidden');
+    appScreen.classList.add('show');
+    await loadProfile();
+    renderDashboard();
+  }
+
+  function slugify(name) {
+    const base = (name || 'project')
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0600-\u06ff]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'project';
+    return base + '-' + Math.random().toString(36).slice(2, 7);
+  }
+
+  // ---------- Dashboard ----------
+  async function renderDashboard() {
+    currentProject = null;
+    const limit = (profile && profile.project_limit) || 1;
+    const plan = (profile && profile.plan) || 'free';
+    const { data: projects } = await sb.from('host_projects').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false });
+    const list = projects || [];
+
+    main.innerHTML = `
+      <div class="hero-dash">
+        <div class="card card-new">
+          <h3>پروژه جدید</h3>
+          <p>یک پروژه بساز، فایل HTML آپلود کن و لینک عمومی بگیر. پلن فعلی: <strong>${plan}</strong> — سقف ${limit} پروژه</p>
+          <button class="btn btn-green" id="btn-new-project" type="button">+ پروژه جدید</button>
+        </div>
+        <div class="card card-sub">
+          <h3>خرید اشتراک</h3>
+          <p>با ارتقا، تعداد پروژه بیشتری منتشر کن. پرداخت به‌زودی فعال می‌شود.</p>
+          <div class="plans">
+            <div class="plan"><div class="price">۱۰۰٬۰۰۰ ت</div><div class="meta">۵ پروژه</div><div class="soon">به‌زودی</div></div>
+            <div class="plan"><div class="price">۲۹۹٬۰۰۰ ت</div><div class="meta">۱۰ پروژه</div><div class="soon">به‌زودی</div></div>
+            <div class="plan"><div class="price">۹۹۹٬۰۰۰ ت</div><div class="meta">نامحدود</div><div class="soon">به‌زودی</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="section-title"><span>پروژه‌های من</span><span style="color:var(--muted);font-size:0.85rem">${list.length} / ${limit === 9999 ? '∞' : limit}</span></div>
+      <div class="projects" id="project-list"></div>
+    `;
+
+    const box = $('#project-list');
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">هنوز پروژه‌ای نداری. روی «پروژه جدید» بزن.</div>';
+    } else {
+      box.innerHTML = list.map(p => `
+        <div class="project-row" data-id="${p.id}">
+          <div>
+            <div class="name">${escapeHtml(p.name)}</div>
+            <div class="slug">${escapeHtml(projectUrl(p.slug))}</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-ghost btn-open" type="button">باز کردن</button>
+            <button class="btn btn-ghost btn-copy" type="button">کپی لینک</button>
+            <button class="btn btn-danger btn-del" type="button">حذف</button>
+          </div>
+        </div>
+      `).join('');
+      box.querySelectorAll('.project-row').forEach(row => {
+        const id = row.getAttribute('data-id');
+        const p = list.find(x => x.id === id);
+        row.querySelector('.btn-open').onclick = () => openProject(p);
+        row.querySelector('.btn-copy').onclick = async () => {
+          try { await navigator.clipboard.writeText(projectUrl(p.slug)); alert('لینک کپی شد'); } catch (_) { prompt('لینک:', projectUrl(p.slug)); }
+        };
+        row.querySelector('.btn-del').onclick = async () => {
+          if (!confirm('پروژه «' + p.name + '» حذف شود؟')) return;
+          await sb.from('host_files').delete().eq('project_id', p.id);
+          await sb.from('host_projects').delete().eq('id', p.id);
+          renderDashboard();
+        };
+      });
+    }
+
+    $('#btn-new-project').onclick = async () => {
+      if (list.length >= limit && limit < 9999) {
+        alert('سقف پروژه پلن فعلی پر است. از بخش اشتراک (به‌زودی) ارتقا بده یا یک پروژه را حذف کن.');
+        return;
+      }
+      const name = prompt('نام پروژه:', 'my-site');
+      if (!name) return;
+      const slug = slugify(name);
+      const { data, error } = await sb.from('host_projects').insert({
+        user_id: session.user.id,
+        name: name.trim(),
+        slug
+      }).select().single();
+      if (error) { alert(error.message); return; }
+      // default index.html
+      await sb.from('host_files').insert({
+        project_id: data.id,
+        filename: 'index.html',
+        content: `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(name)}</title>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Segoe UI,Tahoma,sans-serif;background:linear-gradient(160deg,#eff6ff,#dbeafe);color:#0f172a}
+  .card{background:#fff;padding:2rem 2.4rem;border-radius:20px;box-shadow:0 20px 50px rgba(37,99,235,.15);text-align:center}
+  h1{margin:0 0 .5rem;color:#1d4ed8}
+  p{margin:0;color:#64748b}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>${escapeHtml(name)}</h1>
+    <p>میزبانی‌شده روی Lumera Host ✨</p>
+  </div>
+</body>
+</html>`
+      });
+      openProject(data);
+    };
+  }
+
+  // ---------- Project workspace ----------
+  async function openProject(p) {
+    currentProject = p;
+    const { data: files } = await sb.from('host_files').select('*').eq('project_id', p.id).order('filename');
+    const list = files || [];
+    const url = projectUrl(p.slug);
+
+    main.innerHTML = `
+      <div class="ws-head">
+        <div>
+          <button class="btn btn-ghost" type="button" id="back-dash">→ داشبورد</button>
+          <h2 style="margin-top:10px">${escapeHtml(p.name)}</h2>
+        </div>
+        <div class="link-box">
+          <code id="proj-link">${escapeHtml(url)}</code>
+          <button class="btn btn-primary" type="button" id="btn-copy-link" style="width:auto;padding:8px 12px">کپی لینک</button>
+          <a class="btn btn-ghost" href="${url}" target="_blank" rel="noopener" style="width:auto">باز کردن سایت</a>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:8px">فایل‌ها</h3>
+        <p style="color:var(--muted);font-size:0.9rem;margin-bottom:8px">می‌توانی HTML و فایل‌های متنی دیگر آپلود کنی، ویرایش کنی، جایگزین یا حذف کنی.</p>
+        <div class="files-list" id="files-list"></div>
+        <div class="upload-zone" id="upload-zone">
+          <div style="font-weight:700;color:var(--blue-700)">آپلود فایل</div>
+          <div style="color:var(--muted);font-size:0.88rem;margin-top:6px">HTML، CSS، JS، TXT و ... را بکش اینجا یا انتخاب کن</div>
+          <input type="file" id="file-input" multiple accept=".html,.htm,.css,.js,.txt,.json,.svg,.md,text/*">
+        </div>
+        <div style="margin-top:12px">
+          <button class="btn btn-ghost" type="button" id="btn-new-file">+ فایل متنی جدید</button>
+        </div>
+      </div>
+    `;
+
+    $('#back-dash').onclick = () => renderDashboard();
+    $('#btn-copy-link').onclick = async () => {
+      try { await navigator.clipboard.writeText(url); alert('لینک کپی شد'); } catch (_) { prompt('لینک:', url); }
+    };
+
+    const fl = $('#files-list');
+    function renderFiles(items) {
+      if (!items.length) {
+        fl.innerHTML = '<div class="empty">فایلی نیست — یک index.html آپلود یا بساز.</div>';
+        return;
+      }
+      fl.innerHTML = items.map(f => `
+        <div class="file-row" data-id="${f.id}">
+          <div class="fn">${escapeHtml(f.filename)}</div>
+          <div class="acts">
+            <button class="btn btn-ghost btn-edit" type="button">ویرایش</button>
+            <button class="btn btn-ghost btn-replace" type="button">جایگزین</button>
+            <button class="btn btn-danger btn-rm" type="button">حذف</button>
+          </div>
+        </div>
+      `).join('');
+      fl.querySelectorAll('.file-row').forEach(row => {
+        const id = row.getAttribute('data-id');
+        const f = items.find(x => x.id === id);
+        row.querySelector('.btn-edit').onclick = () => openEditor(f, items);
+        row.querySelector('.btn-rm').onclick = async () => {
+          if (!confirm('حذف ' + f.filename + '؟')) return;
+          await sb.from('host_files').delete().eq('id', f.id);
+          openProject(p);
+        };
+        row.querySelector('.btn-replace').onclick = () => {
+          const inp = document.createElement('input');
+          inp.type = 'file';
+          inp.onchange = async () => {
+            const file = inp.files && inp.files[0];
+            if (!file) return;
+            const text = await file.text();
+            const name = file.name || f.filename;
+            await sb.from('host_files').update({ content: text, filename: name, updated_at: new Date().toISOString() }).eq('id', f.id);
+            openProject(p);
+          };
+          inp.click();
+        };
+      });
+    }
+    renderFiles(list);
+
+    const zone = $('#upload-zone');
+    const input = $('#file-input');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag');
+      if (e.dataTransfer.files) uploadFiles(e.dataTransfer.files);
+    });
+    input.onchange = () => uploadFiles(input.files);
+
+    async function uploadFiles(fileList) {
+      for (const file of Array.from(fileList || [])) {
+        const text = await file.text();
+        const filename = file.name || 'file.txt';
+        const existing = list.find(f => f.filename === filename);
+        if (existing) {
+          await sb.from('host_files').update({ content: text, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        } else {
+          await sb.from('host_files').insert({ project_id: p.id, filename, content: text });
+        }
+      }
+      await sb.from('host_projects').update({ updated_at: new Date().toISOString() }).eq('id', p.id);
+      openProject(p);
+    }
+
+    $('#btn-new-file').onclick = async () => {
+      const filename = prompt('نام فایل:', 'page.html');
+      if (!filename) return;
+      await sb.from('host_files').insert({
+        project_id: p.id,
+        filename,
+        content: filename.endsWith('.html') ? '<!DOCTYPE html>\\n<html>\\n<head><meta charset=\"UTF-8\"><title>New</title></head>\\n<body>\\n  <h1>Hello Lumera Host</h1>\\n</body>\\n</html>' : ''
+      });
+      openProject(p);
+    };
+  }
+
+  function openEditor(file, allFiles) {
+    const back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML = `
+      <div class="modal">
+        <h3>ویرایش فایل</h3>
+        <div class="field"><label>نام فایل</label><input id="ed-name" dir="ltr" value="${escapeAttr(file.filename)}"></div>
+        <div class="field"><label>محتوا</label><textarea id="ed-body" spellcheck="false"></textarea></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" type="button" id="ed-save" style="width:auto">ذخیره</button>
+          <button class="btn btn-ghost" type="button" id="ed-cancel" style="width:auto">بستن</button>
+        </div>
+      </div>`;
+    document.body.appendChild(back);
+    const ta = back.querySelector('#ed-body');
+    ta.value = file.content || '';
+    back.querySelector('#ed-cancel').onclick = () => back.remove();
+    back.onclick = (e) => { if (e.target === back) back.remove(); };
+    back.querySelector('#ed-save').onclick = async () => {
+      const filename = back.querySelector('#ed-name').value.trim();
+      const content = ta.value;
+      if (!filename) { alert('نام فایل لازم است'); return; }
+      const { error } = await sb.from('host_files').update({
+        filename, content, updated_at: new Date().toISOString()
+      }).eq('id', file.id);
+      if (error) { alert(error.message); return; }
+      back.remove();
+      if (currentProject) openProject(currentProject);
+    };
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(s) { return escapeHtml(s).replace(/`/g, ''); }
+
+  // boot
+  (async () => {
+    if (await tryPublicView()) return;
+    const { data: { session: s } } = await sb.auth.getSession();
+    if (s) {
+      session = s;
+      await bootApp();
+    }
+    sb.auth.onAuthStateChange(async (ev, s2) => {
+      if (ev === 'SIGNED_IN') {
+        session = s2;
+        await bootApp();
+      }
+    });
+  })();
+})();
+</script>
+</body>
+</html>
