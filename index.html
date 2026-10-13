@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<title>Lumera Host</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --paper: #ffffff;
+    --ink: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --blue: #2563eb;
+    --blue-deep: #1e3a8a;
+    --blue-soft: #eff6ff;
+    --green: #059669;
+    --danger: #dc2626;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  button, input, textarea { font: inherit; }
+  a { color: var(--blue); text-decoration: none; }
+  .hidden { display: none !important; }
+
+  /* subtle paper grain, not neon AI blobs */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(180deg, rgba(255,255,255,0.7), transparent 40%),
+      radial-gradient(ellipse 80% 50% at 100% 0%, rgba(37,99,235,0.07), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(30,58,138,0.05), transparent 45%);
+  }
+
+  #auth-screen {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+  }
+  @media (max-width: 860px) {
+    #auth-screen { grid-template-columns: 1fr; }
+    .auth-side { order: -1; min-height: 200px; padding: 36px 24px !important; }
+  }
+
+  .auth-form-wrap {
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 24px;
+  }
+  .auth-box {
+    width: 100%; max-width: 400px;
+  }
+  .auth-box .eyebrow {
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--blue); font-weight: 700; margin-bottom: 10px;
+  }
+  .auth-box h1 {
+    font-size: 1.65rem; font-weight: 800; letter-spacing: -0.03em;
+    margin-bottom: 8px; color: var(--ink);
+  }
+  .auth-box .lead {
+    color: var(--muted); font-size: 0.95rem; line-height: 1.7; margin-bottom: 28px;
+  }
+
+  .switch {
+    display: inline-flex; background: #eef2f7; border-radius: 10px; padding: 3px; margin-bottom: 22px;
+  }
+  .switch button {
+    border: none; background: transparent; padding: 9px 18px; border-radius: 8px;
+    cursor: pointer; color: var(--muted); font-weight: 600; font-size: 0.9rem;
+  }
+  .switch button.on {
+    background: var(--paper); color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%; padding: 11px 13px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--paper); outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .field input:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 12px 16px;
+    font-weight: 700; cursor: pointer; transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-main {
+    width: 100%; margin-top: 6px;
+    background: var(--blue-deep); color: #fff;
+  }
+  .btn-main:hover { background: #172554; }
+  .btn-main:disabled { opacity: 0.6; cursor: wait; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { filter: brightness(1.05); }
+  .btn-soft {
+    background: var(--paper); border: 1px solid var(--line); color: var(--ink);
+  }
+  .btn-soft:hover { background: #f9fafb; }
+  .btn-danger {
+    background: #fff; border: 1px solid #fecaca; color: var(--danger);
+  }
+
+  .msg { margin-top: 14px; font-size: 0.88rem; line-height: 1.5; min-height: 1.2em; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--green); }
+
+  .auth-side {
+    background: #0b1b3a;
+    color: #e8eefc;
+    padding: 48px 40px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .auth-side::after {
+    content: "";
+    position: absolute; width: 420px; height: 420px; border-radius: 50%;
+    right: -120px; bottom: -140px;
+    background: radial-gradient(circle, rgba(59,130,246,0.35), transparent 70%);
+  }
+  .auth-side .mark {
+    position: relative; z-index: 1;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    opacity: 0.7; margin-bottom: 18px;
+  }
+  .auth-side h2 {
+    position: relative; z-index: 1;
+    font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+    font-weight: 800; letter-spacing: -0.03em; line-height: 1.25;
+    max-width: 12ch;
+  }
+  .auth-side p {
+    position: relative; z-index: 1;
+    margin-top: 16px; opacity: 0.78; line-height: 1.75; max-width: 32ch; font-size: 0.95rem;
+  }
+  .auth-side .foot {
+    position: relative; z-index: 1;
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 40px;
+  }
+  .auth-side .foot span {
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 7px 12px; border-radius: 999px; font-size: 0.78rem; opacity: 0.9;
+  }
+
+  /* APP */
+  #app-screen {
+    position: relative; z-index: 1;
+    min-height: 100vh; display: none; flex-direction: column;
+  }
+  #app-screen.show { display: flex; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.92);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+  }
+  .topbar .brand {
+    font-weight: 800; color: var(--blue-deep);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .topbar .brand b {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--blue-deep); color: #fff;
+    display: grid; place-items: center; font-size: 11px;
+  }
+  .menu-wrap { position: relative; }
+  .menu-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 1px solid var(--line); background: #fff; cursor: pointer; font-size: 18px;
+  }
+  .dropdown {
+    position: absolute; left: 0; top: calc(100% + 6px);
+    width: 230px; background: #fff; border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.1); padding: 8px;
+  }
+  .dropdown .who { padding: 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .dropdown .who strong { display: block; font-size: 0.92rem; }
+  .dropdown .who span { color: var(--muted); font-size: 0.8rem; }
+  .dropdown button {
+    width: 100%; text-align: right; border: none; background: transparent;
+    padding: 10px; border-radius: 8px; cursor: pointer;
+  }
+  .dropdown button:hover { background: var(--blue-soft); }
+
+  .content { flex: 1; width: min(920px, 100%); margin: 0 auto; padding: 28px 18px 50px; }
+
+  .grid2 {
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; margin-bottom: 26px;
+  }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: 0.9rem; line-height: 1.65; margin-bottom: 14px; }
+
+  .plans { display: grid; gap: 8px; }
+  .plan {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fafafa;
+  }
+  .plan strong { font-size: 0.95rem; }
+  .plan span { font-size: 0.8rem; color: var(--muted); }
+  .tag {
+    font-size: 0.72rem; background: var(--blue-soft); color: var(--blue);
+    padding: 3px 8px; border-radius: 6px; font-weight: 600;
+  }
+
+  .section-h {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; font-weight: 700;
+  }
+  .plist { display: grid; gap: 10px; }
+  .prow {
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    padding: 14px 16px; background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  }
+  .prow .n { font-weight: 700; }
+  .prow .s { font-size: 0.78rem; color: var(--muted); direction: ltr; text-align: left; margin-top: 3px; word-break: break-all; }
+  .prow .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .ws-head { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; margin-bottom: 16px; }
+  .linkbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    background: var(--blue-soft); border: 1px solid #dbeafe;
+    padding: 8px 10px; border-radius: 10px; direction: ltr;
+  }
+  .linkbar code { font-size: 0.8rem; color: var(--blue-deep); word-break: break-all; flex: 1; min-width: 140px; }
+
+  .flist { display: grid; gap: 8px; margin: 12px 0; }
+  .frow {
+    display: flex; justify-content: space-between; gap: 10px; align-items: center;
+    padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  }
+  .frow .fn { font-weight: 600; direction: ltr; text-align: left; }
+  .frow .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .drop {
+    border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center;
+    background: #fafafa; margin-top: 12px;
+  }
+  .drop.on { border-color: var(--blue); background: var(--blue-soft); }
+  .drop input { margin-top: 10px; }
+
+  .empty {
+    text-align: center; color: var(--muted); padding: 28px;
+    border: 1px dashed var(--line); border-radius: 12px;
+  }
+
+  .modal-back {
+    position: fixed; inset: 0; background: rgba(17,24,39,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50; padding: 14px;
+  }
+  .modal {
+    width: min(700px, 100%); max-height: 90vh; overflow: auto;
+    background: #fff; border-radius: 14px; padding: 18px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.18);
+  }
+  .modal h3 { margin-bottom: 12px; }
+  .modal textarea {
+    width: 100%; min-height: 260px; border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px; direction: ltr; text-align: left;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem;
+  }
+  .modal-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+  #view-screen { display: none; position: fixed; inset: 0; z-index: 100; background: #fff; }
+  #view-screen.show { display: block; }
+  .view-bar {
+    height: 34px; background: #111827; color: #e5e7eb; font-size: 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; direction: ltr;
+  }
+  #view-frame { width: 100%; height: calc(100% - 34px); border: 0; }
+</style>
+</head>
+<body>
+
+<section id="auth-screen">
+  <div class="auth-form-wrap">
+    <div class="auth-box">
+      <div class="eyebrow">Lumera Studio</div>
+      <h1>ورود به Host</h1>
+      <p class="lead">فایل وب را آپلود کن و یک لینک عمومی برای اجرای سایت بگیر.</p>
+
+      <div class="switch">
+        <button type="button" class="on" id="tab-login">ورود</button>
+        <button type="button" id="tab-signup">ثبت‌نام</button>
+      </div>
+
+      <form id="auth-form" novalidate>
+        <div class="field">
+          <label for="auth-email">ایمیل</label>
+          <input id="auth-email" type="email" dir="ltr" autocomplete="email" placeholder="you@email.com" required>
+        </div>
+        <div class="field">
+          <label for="auth-pass">رمز عبور</label>
+          <input id="auth-pass" type="password" dir="ltr" autocomplete="current-password" placeholder="حداقل ۶ کاراکتر" required minlength="6">
+        </div>
+        <div class="field hidden" id="pass2-wrap">
+          <label for="auth-pass2">تکرار رمز</label>
+          <input id="auth-pass2" type="password" dir="ltr" autocomplete="new-password" placeholder="تکرار رمز" minlength="6">
+        </div>
+        <button class="btn btn-main" type="submit" id="auth-submit">ورود</button>
+        <div class="msg" id="auth-msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <aside class="auth-side">
+    <div>
+      <div class="mark">LUMERA HOST</div>
+      <h2>میزبانی ساده برای صفحات وب</h2>
+      <p>پروژه بساز، HTML و CSS و JS بگذار، لینک بگیر. مناسب تست، دمو و صفحات سبک.</p>
+    </div>
+    <div class="foot">
+      <span>آپلود فایل</span>
+      <span>ویرایش کد</span>
+      <span>لینک عمومی</span>
+    </div>
+  </aside>
+</section>
+
+<section id="app-screen">
+  <header class="topbar">
+    <div class="brand"><b>LH</b> Lumera Host</div>
+    <div class="menu-wrap">
+      <button type="button" class="menu-btn" id="menu-btn" aria-label="منو">⋮</button>
+      <div class="dropdown hidden" id="menu-drop">
+        <div class="who">
+          <strong id="menu-name">کاربر</strong>
+          <span id="menu-email"></span>
+        </div>
+        <button type="button" id="menu-projects">پروژه‌ها</button>
+        <button type="button" id="menu-logout">خروج</button>
+      </div>
+    </div>
+  </header>
+  <main class="content" id="main-content"></main>
+</section>
+
+<section id="view-screen">
+  <div class="view-bar">
+    <span id="view-label">Lumera Host</span>
+    <a href="#" id="view-home" style="color:#93c5fd">Home</a>
+  </div>
+  <iframe id="view-frame" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"></iframe>
+</section>
+
+<script>
+(function () {
+  const SUPABASE_URL = 'https://cnvxbwdjuwczowaqgmia.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnhid2RqdXdjem93YXFnbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzE5NDQsImV4cCI6MjEwNjUwNzk0NH0.OB5lXXhHQXdnHlJU5azIuHHZ8G339BSNl4aieTDKeX8';
+
+  if (!window.supabase || !window.supabase.createClient) {
+    document.body.innerHTML = '<p style="padding:2rem;font-family:sans-serif;direction:rtl">خطا در لود Supabase. اینترنت را چک کن.</p>';
+    return;
+  }
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    global: {
+      headers: {
+        apikey: SUPABASE_ANON,
+        Authorization: 'Bearer ' + SUPABASE_ANON
+      }
+    }
+  });
+
+  const SESSION_KEY = 'lumera_host_user';
+  const $ = (s, r) => (r || document).querySelector(s);
+  const authScreen = $('#auth-screen');
+  const appScreen = $('#app-screen');
+  const viewScreen = $('#view-screen');
+  const main = $('#main-content');
+
+  let mode = 'login';
+  let user = null;
+  let currentProject = null;
+
+  function saveUser(u) {
+    user = u;
+    if (u) localStorage.setItem(SESSION_KEY, JSON.stringify(u));
+    else localStorage.removeItem(SESSION_KEY);
+  }
+  function loadUser() {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      user = raw ? JSON.parse(raw) : null;
+    } catch (_) { user = null; }
+    return user;
+  }
+
+  function publicBase() {
+    return location.origin + location.pathname.replace(/index\.html$/i, '');
+  }
+  function projectUrl(slug) {
+    return publicBase() + '?p=' + encodeURIComponent(slug);
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+    });
+  }
+
+  async function tryPublicView() {
+    var params = new URLSearchParams(location.search);
+    var slug = params.get('p');
+    if (!slug) return false;
+    authScreen.classList.add('hidden');
+    appScreen.classList.remove('show');
+    viewScreen.classList.add('show');
+    $('#view-label').textContent = 'Lumera Host · ' + slug;
+    $('#view-home').href = publicBase();
+    try {
+      var res = await sb.from('host_projects').select('id,name,slug').eq('slug', slug).maybeSingle();
+      if (res.error) throw res.error;
+      if (!res.data) {
+        document.body.innerHTML = '<div style="padding:48px;text-align:center;font-family:sans-serif;direction:rtl"><h2>پروژه پیدا نشد</h2></div>';
+        return true;
+      }
+      var filesRes = await sb.from('host_files').select('filename,content').eq('project_id', res.data.id);
+      var list = filesRes.data || [];
+      var htmlFile = list.find(function (f) { return /^index\.html$/i.test(f.filename); })
+        || list.find(function (f) { return /\.html$/i.test(f.filename); })
+        || list[0];
+      if (!htmlFile) {
+        $('#view-frame').srcdoc = '<p style="padding:2rem;font-family:sans-serif;direction:rtl">فایلی وجود ندارد</p>';
+        return true;
+      }
+      var body = htmlFile.content || '';
+      var css = list.filter(function (f) { return /\.css$/i.test(f.filename); });
+      if (css.length && !/<link[^>]+stylesheet/i.test(body)) {
+        var styles = css.map(function (c) { return '<style>' + c.content + '</style>'; }).join('\n');
+        if (/<\/head>/i.test(body)) body = body.replace(/<\/head>/i, styles + '</head>');
+        else body = styles + body;
+      }
+      $('#view-frame').srcdoc = body;
+    } catch (e) {
+      console.error(e);
+      $('#view-frame').srcdoc = '<p style="padding:2rem;font-family:sans-serif;direction:rtl">خطا در بارگذاری</p>';
+    }
+    return true;
+  }
+
+  function setMode(m) {
+    mode = m;
+    $('#tab-login').classList.toggle('on', m === 'login');
+    $('#tab-signup').classList.toggle('on', m === 'signup');
+    $('#pass2-wrap').classList.toggle('hidden', m === 'login');
+    $('#auth-submit').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
+    $('#auth-msg').textContent = '';
+    $('#auth-msg').className = 'msg';
+  }
+  $('#tab-login').onclick = function () { setMode('login'); };
+  $('#tab-signup').onclick = function () { setMode('signup'); };
+
+  $('#auth-form').onsubmit = async function (e) {
+    e.preventDefault();
+    var email = $('#auth-email').value.trim().toLowerCase();
+    var pass = $('#auth-pass').value;
+    var msg = $('#auth-msg');
+    var btn = $('#auth-submit');
+    msg.className = 'msg';
+    if (!email || !pass) {
+      msg.className = 'msg err';
+      msg.textContent = 'ایمیل و رمز را وارد کن.';
+      return;
+    }
+    btn.disabled = true;
+    msg.textContent = 'لطفاً صبر کن...';
+    try {
+      var data;
+      if (mode === 'signup') {
+        var pass2 = $('#auth-pass2').value;
+        if (pass !== pass2) throw new Error('تکرار رمز اشتباه است');
+        if (pass.length < 6) throw new Error('رمز حداقل ۶ کاراکتر');
+        var reg = await sb.rpc('host_register', {
+          p_email: email,
+          p_password: pass,
+          p_name: email.split('@')[0]
+        });
+        if (reg.error) throw reg.error;
+        data = reg.data;
+      } else {
+        var log = await sb.rpc('host_login', { p_email: email, p_password: pass });
+        if (log.error) throw log.error;
+        data = log.data;
+      }
+      if (!data || data.ok === false) {
+        throw new Error((data && data.error) || 'خطا');
+      }
+      saveUser(data.user);
+      bootApp();
+    } catch (err) {
+      console.error(err);
+      msg.className = 'msg err';
+      var t = (err && err.message) || 'خطا';
+      if (/Could not find the function|PGRST202|404/i.test(t)) {
+        t = 'SQL جدید را در Supabase هنوز Run نکردی. فایل SQL.sql را دوباره اجرا کن.';
+      }
+      if (/rate limit|429/i.test(t)) {
+        t = 'محدودیت درخواست. کمی صبر کن و دوباره تلاش کن.';
+      }
+      msg.textContent = t;
+    } finally {
+      btn.disabled = false;
+    }
+  };
+
+  $('#menu-btn').onclick = function (e) {
+    e.stopPropagation();
+    $('#menu-drop').classList.toggle('hidden');
+  };
+  document.addEventListener('click', function () {
+    $('#menu-drop').classList.add('hidden');
+  });
+  $('#menu-logout').onclick = function () {
+    saveUser(null);
+    currentProject = null;
+    appScreen.classList.remove('show');
+    authScreen.classList.remove('hidden');
+  };
+  $('#menu-projects').onclick = function () {
+    currentProject = null;
+    renderDashboard();
+  };
+
+  function bootApp() {
+    if (!user) return;
+    authScreen.classList.add('hidden');
+    appScreen.classList.add('show');
+    $('#menu-name').textContent = user.display_name || (user.email || '').split('@')[0];
+    $('#menu-email').textContent = user.email || '';
+    renderDashboard();
+  }
+
+  function slugify(name) {
+    var base = String(name || 'project').toLowerCase()
+      .replace(/[^a-z0-9\u0600-\u06ff]+/gi, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 36) || 'project';
+    return base + '-' + Math.random().toString(36).slice(2, 7);
+  }
+
+  async function renderDashboard() {
+    currentProject = null;
+    var limit = (user && user.project_limit) || 1;
+    var plan = (user && user.plan) || 'free';
+    var pr = await sb.from('host_projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (pr.error) console.error(pr.error);
+    var list = pr.data || [];
+
+    main.innerHTML =
+      '<div class="grid2">' +
+        '<div class="card">' +
+          '<h3>پروژه جدید</h3>' +
+          '<p>HTML آپلود کن و لینک عمومی بگیر. پلن: <b>' + escapeHtml(plan) + '</b> — سقف ' + limit + ' پروژه</p>' +
+          '<button type="button" class="btn btn-green" id="btn-new">+ پروژه جدید</button>' +
+        '</div>' +
+        '<div class="card">' +
+          '<h3>خرید اشتراک</h3>' +
+          '<p>پرداخت فعلاً فعال نیست.</p>' +
+          '<div class="plans">' +
+            '<div class="plan"><div><strong>۱۰۰٬۰۰۰ ت</strong><br><span>۵ پروژه</span></div><span class="tag">به‌زودی</span></div>' +
+            '<div class="plan"><div><strong>۲۹۹٬۰۰۰ ت</strong><br><span>۱۰ پروژه</span></div><span class="tag">به‌زودی</span></div>' +
+            '<div class="plan"><div><strong>۹۹۹٬۰۰۰ ت</strong><br><span>نامحدود</span></div><span class="tag">به‌زودی</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="section-h"><span>پروژه‌های من</span><span style="color:var(--muted);font-weight:500;font-size:0.85rem">' + list.length + ' / ' + (limit >= 9999 ? '∞' : limit) + '</span></div>' +
+      '<div class="plist" id="plist"></div>';
+
+    var box = $('#plist');
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">هنوز پروژه‌ای نداری.</div>';
+    } else {
+      box.innerHTML = list.map(function (p) {
+        return '<div class="prow" data-id="' + p.id + '">' +
+          '<div><div class="n">' + escapeHtml(p.name) + '</div><div class="s">' + escapeHtml(projectUrl(p.slug)) + '</div></div>' +
+          '<div class="acts">' +
+            '<button type="button" class="btn btn-soft btn-open">باز کردن</button>' +
+            '<button type="button" class="btn btn-soft btn-copy">کپی لینک</button>' +
+            '<button type="button" class="btn btn-danger btn-del">حذف</button>' +
+          '</div></div>';
+      }).join('');
+      box.querySelectorAll('.prow').forEach(function (row) {
+        var id = row.getAttribute('data-id');
+        var p = list.find(function (x) { return x.id === id; });
+        row.querySelector('.btn-open').onclick = function () { openProject(p); };
+        row.querySelector('.btn-copy').onclick = async function () {
+          try { await navigator.clipboard.writeText(projectUrl(p.slug)); alert('کپی شد'); }
+          catch (_) { prompt('لینک', projectUrl(p.slug)); }
+        };
+        row.querySelector('.btn-del').onclick = async function () {
+          if (!confirm('حذف پروژه؟')) return;
+          await sb.from('host_files').delete().eq('project_id', p.id);
+          await sb.from('host_projects').delete().eq('id', p.id);
+          renderDashboard();
+        };
+      });
+    }
+
+    $('#btn-new').onclick = async function () {
+      if (list.length >= limit && limit < 9999) {
+        alert('سقف پروژه پر است.');
+        return;
+      }
+      var name = prompt('نام پروژه', 'my-site');
+      if (!name) return;
+      var slug = slugify(name);
+      var ins = await sb.from('host_projects').insert({
+        user_id: user.id,
+        name: name.trim(),
+        slug: slug
+      }).select().single();
+      if (ins.error) { alert(ins.error.message); return; }
+      var starter = '<!DOCTYPE html>\\n<html lang="fa" dir="rtl">\\n<head>\\n<meta charset="UTF-8">\\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\\n<title>' + escapeHtml(name) + '</title>\\n<style>\\nbody{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Tahoma,sans-serif;background:#f4f7fb;color:#111}\\n.box{background:#fff;padding:2rem;border-radius:12px;border:1px solid #e5e7eb;text-align:center}\\nh1{margin:0 0 .4rem;font-size:1.4rem}\\np{margin:0;color:#6b7280}\\n</style>\\n</head>\\n<body>\\n<div class="box"><h1>' + escapeHtml(name) + '</h1><p>روی Lumera Host</p></div>\\n</body>\\n</html>';
+      await sb.from('host_files').insert({
+        project_id: ins.data.id,
+        filename: 'index.html',
+        content: starter
+      });
+      openProject(ins.data);
+    };
+  }
+
+  async function openProject(p) {
+    currentProject = p;
+    var fr = await sb.from('host_files').select('*').eq('project_id', p.id).order('filename');
+    var list = fr.data || [];
+    var url = projectUrl(p.slug);
+
+    main.innerHTML =
+      '<div class="ws-head">' +
+        '<div><button type="button" class="btn btn-soft" id="back">→ داشبورد</button>' +
+        '<h2 style="margin-top:10px;font-size:1.25rem">' + escapeHtml(p.name) + '</h2></div>' +
+        '<div class="linkbar"><code>' + escapeHtml(url) + '</code>' +
+        '<button type="button" class="btn btn-main" id="copy" style="width:auto;padding:8px 12px">کپی</button>' +
+        '<a class="btn btn-soft" href="' + url + '" target="_blank" rel="noopener" style="width:auto">باز کردن</a></div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<h3>فایل‌ها</h3>' +
+        '<p style="color:var(--muted);font-size:0.9rem;margin-bottom:8px">آپلود، ویرایش، جایگزین یا حذف</p>' +
+        '<div class="flist" id="flist"></div>' +
+        '<div class="drop" id="drop"><div style="font-weight:700">آپلود فایل</div>' +
+        '<div style="color:var(--muted);font-size:0.85rem;margin-top:4px">HTML / CSS / JS / TXT</div>' +
+        '<input type="file" id="fin" multiple accept=".html,.htm,.css,.js,.txt,.json,.svg,.md,text/*"></div>' +
+        '<div style="margin-top:10px"><button type="button" class="btn btn-soft" id="newf">+ فایل جدید</button></div>' +
+      '</div>';
+
+    $('#back').onclick = function () { renderDashboard(); };
+    $('#copy').onclick = async function () {
+      try { await navigator.clipboard.writeText(url); alert('کپی شد'); }
+      catch (_) { prompt('لینک', url); }
+    };
+
+    var fl = $('#flist');
+    function paint(items) {
+      if (!items.length) {
+        fl.innerHTML = '<div class="empty">فایلی نیست</div>';
+        return;
+      }
+      fl.innerHTML = items.map(function (f) {
+        return '<div class="frow" data-id="' + f.id + '"><div class="fn">' + escapeHtml(f.filename) + '</div>' +
+          '<div class="acts">' +
+          '<button type="button" class="btn btn-soft btn-ed">ویرایش</button>' +
+          '<button type="button" class="btn btn-soft btn-rp">جایگزین</button>' +
+          '<button type="button" class="btn btn-danger btn-rm">حذف</button></div></div>';
+      }).join('');
+      fl.querySelectorAll('.frow').forEach(function (row) {
+        var id = row.getAttribute('data-id');
+        var f = items.find(function (x) { return x.id === id; });
+        row.querySelector('.btn-ed').onclick = function () { openEditor(f); };
+        row.querySelector('.btn-rm').onclick = async function () {
+          if (!confirm('حذف؟')) return;
+          await sb.from('host_files').delete().eq('id', f.id);
+          openProject(p);
+        };
+        row.querySelector('.btn-rp').onclick = function () {
+          var inp = document.createElement('input');
+          inp.type = 'file';
+          inp.onchange = async function () {
+            var file = inp.files && inp.files[0];
+            if (!file) return;
+            var text = await file.text();
+            await sb.from('host_files').update({
+              content: text,
+              filename: file.name || f.filename,
+              updated_at: new Date().toISOString()
+            }).eq('id', f.id);
+            openProject(p);
+          };
+          inp.click();
+        };
+      });
+    }
+    paint(list);
+
+    var drop = $('#drop');
+    var fin = $('#fin');
+    drop.addEventListener('dragover', function (e) { e.preventDefault(); drop.classList.add('on'); });
+    drop.addEventListener('dragleave', function () { drop.classList.remove('on'); });
+    drop.addEventListener('drop', function (e) {
+      e.preventDefault(); drop.classList.remove('on');
+      if (e.dataTransfer.files) uploadFiles(e.dataTransfer.files, list);
+    });
+    fin.onchange = function () { uploadFiles(fin.files, list); };
+
+    async function uploadFiles(fileList, existing) {
+      var arr = Array.from(fileList || []);
+      for (var i = 0; i < arr.length; i++) {
+        var file = arr[i];
+        var text = await file.text();
+        var filename = file.name || 'file.txt';
+        var found = existing.find(function (f) { return f.filename === filename; });
+        if (found) {
+          await sb.from('host_files').update({ content: text, updated_at: new Date().toISOString() }).eq('id', found.id);
+        } else {
+          await sb.from('host_files').insert({ project_id: p.id, filename: filename, content: text });
+        }
+      }
+      openProject(p);
+    }
+
+    $('#newf').onclick = async function () {
+      var filename = prompt('نام فایل', 'page.html');
+      if (!filename) return;
+      var content = /\\.html?$/i.test(filename)
+        ? '<!DOCTYPE html>\\n<html>\\n<head><meta charset="UTF-8"><title>New</title></head>\\n<body><h1>Hello</h1></body>\\n</html>'
+        : '';
+      await sb.from('host_files').insert({ project_id: p.id, filename: filename, content: content });
+      openProject(p);
+    };
+  }
+
+  function openEditor(file) {
+    var back = document.createElement('div');
+    back.className = 'modal-back';
+    back.innerHTML =
+      '<div class="modal">' +
+        '<h3>ویرایش فایل</h3>' +
+        '<div class="field"><label>نام فایل</label><input id="ed-name" dir="ltr" value="' + escapeHtml(file.filename) + '"></div>' +
+        '<div class="field"><label>محتوا</label><textarea id="ed-body" spellcheck="false"></textarea></div>' +
+        '<div class="modal-actions">' +
+          '<button type="button" class="btn btn-main" id="ed-save" style="width:auto">ذخیره</button>' +
+          '<button type="button" class="btn btn-soft" id="ed-cancel" style="width:auto">بستن</button>' +
+        '</div></div>';
+    document.body.appendChild(back);
+    back.querySelector('#ed-body').value = file.content || '';
+    back.querySelector('#ed-cancel').onclick = function () { back.remove(); };
+    back.onclick = function (e) { if (e.target === back) back.remove(); };
+    back.querySelector('#ed-save').onclick = async function () {
+      var filename = back.querySelector('#ed-name').value.trim();
+      var content = back.querySelector('#ed-body').value;
+      if (!filename) { alert('نام فایل لازم است'); return; }
+      var u = await sb.from('host_files').update({
+        filename: filename,
+        content: content,
+        updated_at: new Date().toISOString()
+      }).eq('id', file.id);
+      if (u.error) { alert(u.error.message); return; }
+      back.remove();
+      if (currentProject) openProject(currentProject);
+    };
+  }
+
+  (async function init() {
+    if (await tryPublicView()) return;
+    if (loadUser()) bootApp();
+  })();
+})();
+</script>
+</body>
+</html>
