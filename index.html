@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index,follow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdn.jsdelivr.net https://*.supabase.co; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co https://text.pollinations.ai; frame-src 'self' blob: data:;">
+<title>Lumera Host</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#070b16;--card:#121a2e;--ink:#e8eefc;--muted:#93a4c3;--line:rgba(148,163,184,.18);--blue:#3b82f6;--cyan:#22d3ee;--green:#34d399;--violet:#a78bfa;--danger:#f87171}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:Tahoma,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100%;overflow-x:hidden}
+button,input,textarea,select{font:inherit}
+a{color:#93c5fd;text-decoration:none}
+.hidden{display:none!important}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+#intro{position:fixed;inset:0;z-index:9999;background:#050814;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+#intro .ring{width:110px;height:110px;border-radius:50%;border:2px solid transparent;border-top-color:var(--cyan);border-right-color:var(--blue);animation:spin 1s linear infinite;display:grid;place-items:center}
+#intro .logo{font-weight:900;letter-spacing:.1em}
+#intro .sub{color:var(--muted);font-size:.85rem}
+#auth-screen{min-height:100vh;display:none;grid-template-columns:1.1fr .9fr}
+#auth-screen.show{display:grid}
+@media(max-width:860px){#auth-screen.show{grid-template-columns:1fr}.auth-side{order:-1;min-height:200px}}
+.auth-form-wrap{display:flex;align-items:center;justify-content:center;padding:32px 16px;background:radial-gradient(700px 360px at 20% 0%,rgba(59,130,246,.14),transparent)}
+.auth-box{width:100%;max-width:400px;animation:fadeUp .5s ease both}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:800;margin-bottom:10px}
+.auth-box h1{font-size:1.65rem;font-weight:900;margin-bottom:8px}
+.lead{color:var(--muted);line-height:1.75;font-size:.92rem;margin-bottom:18px}
+.switch{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px}
+.switch button{border:0;background:transparent;padding:9px 16px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:700}
+.switch button.on{background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;color:#cbd5e1}
+.field input,.field textarea,.field select{width:100%;padding:11px 13px;border-radius:12px;outline:0;color:var(--ink);background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.field input:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+.btn{border:0;border-radius:12px;padding:11px 15px;font-weight:800;cursor:pointer;transition:.2s}
+.btn:active{transform:scale(.98)}
+.btn-main{width:100%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff}
+.btn-main:disabled{opacity:.55;cursor:wait}
+.btn-green{background:linear-gradient(135deg,#047857,#10b981);color:#fff}
+.btn-soft{background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink)}
+.btn-danger{background:rgba(220,38,38,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5}
+.msg{margin-top:12px;font-size:.88rem;min-height:1.2em;color:var(--muted)}
+.msg.err{color:#fca5a5}.msg.ok{color:var(--green)}
+.auth-side{position:relative;overflow:hidden;padding:40px 32px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(165deg,#0a1224,#132a5c 55%,#1d4ed8)}
+.auth-side .orb{position:absolute;border-radius:50%;opacity:.35;animation:float 6s ease-in-out infinite}
+.auth-side .orb.a{width:220px;height:220px;background:#22d3ee;right:-50px;top:15%}
+.auth-side .mark,.auth-side h2,.auth-side p,.auth-side .chips{position:relative;z-index:1}
+.auth-side .mark{font-size:12px;letter-spacing:.16em;opacity:.75;margin-bottom:12px;font-weight:700}
+.auth-side h2{font-size:clamp(1.6rem,3vw,2.3rem);font-weight:900;line-height:1.25;max-width:11ch}
+.auth-side p{margin-top:12px;opacity:.85;line-height:1.75;max-width:32ch}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+.chips span{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);padding:7px 11px;border-radius:999px;font-size:.75rem}
+#app-screen{display:none;min-height:100vh;flex-direction:column}
+#app-screen.show{display:flex;animation:fadeIn .35s ease}
+.topbar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:rgba(7,11,22,.86);border-bottom:1px solid var(--line);backdrop-filter:blur(14px);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:8px;font-weight:900}
+.brand b{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:11px;color:#fff;background:linear-gradient(135deg,#1d4ed8,#22d3ee)}
+.nav-links{display:flex;gap:4px;flex-wrap:wrap}
+.nav-links button{border:0;background:transparent;color:var(--muted);padding:8px 11px;border-radius:10px;cursor:pointer;font-weight:700;font-size:.84rem}
+.nav-links button:hover{color:#fff;background:rgba(255,255,255,.06)}
+.menu-wrap{position:relative}
+.menu-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:#fff;cursor:pointer}
+.dropdown{position:absolute;left:0;top:calc(100% + 8px);width:230px;background:#0f172a;border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.dropdown .who{padding:10px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.dropdown .who strong{display:block}.dropdown .who span{color:var(--muted);font-size:.78rem}
+.dropdown button{width:100%;text-align:right;border:0;background:transparent;color:var(--ink);padding:10px;border-radius:10px;cursor:pointer}
+.dropdown button:hover{background:rgba(59,130,246,.15)}
+.content{width:min(1100px,100%);margin:0 auto;padding:0 14px 80px;flex:1}
+.hero{position:relative;padding:40px 0 20px}
+.hero-bg{position:absolute;inset:-30px -10px auto;height:280px;pointer-events:none;background:radial-gradient(circle at 20% 40%,rgba(59,130,246,.22),transparent 45%),radial-gradient(circle at 80% 20%,rgba(34,211,238,.14),transparent 40%)}
+.hero-inner{position:relative;z-index:1;display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:center}
+@media(max-width:820px){.hero-inner{grid-template-columns:1fr}}
+.hero h1{font-size:clamp(1.7rem,4vw,2.45rem);font-weight:900;line-height:1.25;margin-bottom:10px}
+.hero h1 span{background:linear-gradient(90deg,#60a5fa,#22d3ee,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);line-height:1.8;max-width:44ch;margin-bottom:16px}
+.hero-cta{display:flex;gap:8px;flex-wrap:wrap}
+.hero-card{background:linear-gradient(160deg,rgba(18,26,46,.95),rgba(30,58,138,.35));border:1px solid var(--line);border-radius:20px;padding:18px;animation:float 5s ease-in-out infinite}
+.hero-card .row{display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.hero-card .row b{font-size:1.15rem;color:var(--cyan)}.hero-card .row span{display:block;font-size:.72rem;color:var(--muted)}
+.section{padding:24px 0}
+.section-title{margin-bottom:14px}
+.section-title h2{font-size:1.2rem;font-weight:900}
+.section-title p{color:var(--muted);font-size:.88rem;margin-top:4px}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:900px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
+.feat{background:rgba(18,26,46,.85);border:1px solid var(--line);border-radius:16px;padding:14px;transition:.2s}
+.feat:hover{transform:translateY(-3px);border-color:rgba(96,165,250,.4)}
+.feat .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:10px;background:rgba(59,130,246,.15)}
+.feat h3{font-size:.95rem;margin-bottom:5px}.feat p{color:var(--muted);font-size:.82rem;line-height:1.6}
+.ai-box{background:linear-gradient(145deg,rgba(30,58,138,.35),rgba(18,26,46,.95));border:1px solid rgba(96,165,250,.35);border-radius:20px;padding:16px;margin-top:8px}
+.ai-box h3{margin-bottom:6px}
+.ai-box .hint{color:var(--muted);font-size:.85rem;margin-bottom:10px;line-height:1.6}
+.ai-log{max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.ai-msg{padding:10px 12px;border-radius:12px;font-size:.88rem;line-height:1.65}
+.ai-msg.user{background:rgba(59,130,246,.2);align-self:flex-start}
+.ai-msg.bot{background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.ai-row{display:flex;gap:8px}
+.ai-row input{flex:1}
+.projects-panel{background:rgba(18,26,46,.75);border:1px solid var(--line);border-radius:18px;padding:14px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.search{border:1px solid var(--line);border-radius:11px;padding:9px 12px;outline:0;min-width:160px;background:rgba(0,0,0,.25);color:var(--ink)}
+.plist{display:grid;gap:8px;margin-top:10px}
+.prow{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;padding:12px;border-radius:14px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.prow .n{font-weight:800}.prow .s{font-size:.74rem;color:var(--muted);direction:ltr;text-align:left;margin-top:3px;word-break:break-all}
+.prow .acts{display:flex;gap:6px;flex-wrap:wrap}
+.ws-head{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin:16px 0 12px}
+.linkbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:rgba(59,130,246,.12);border:1px solid rgba(96,165,250,.3);padding:10px;border-radius:12px;direction:ltr}
+.linkbar code{font-size:.78rem;color:#93c5fd;word-break:break-all;flex:1;min-width:120px}
+.grid-files{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:800px){.grid-files{grid-template-columns:1fr}}
+.card-block{background:rgba(18,26,46,.85);border:1px solid var(--line);border-radius:18px;padding:16px}
+.flist{display:grid;gap:8px;margin:10px 0}
+.frow{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.frow .fn{font-weight:700;direction:ltr;text-align:left}
+.drop{border:1.5px dashed rgba(148,163,184,.35);border-radius:14px;padding:18px;text-align:center;background:rgba(255,255,255,.02);margin-top:10px}
+.drop.on{border-color:var(--cyan);background:rgba(34,211,238,.08)}
+.drop input{margin-top:8px;color:var(--muted)}
+.code-area{width:100%;min-height:280px;border-radius:12px;border:1px solid var(--line);background:#020617;color:#e2e8f0;padding:12px;direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;line-height:1.5}
+.modal-back{position:fixed;inset:0;background:rgba(2,6,23,.7);display:flex;align-items:center;justify-content:center;z-index:70;padding:12px;backdrop-filter:blur(6px)}
+.modal{width:min(820px,100%);max-height:92vh;overflow:auto;background:#0f172a;border:1px solid var(--line);border-radius:16px;padding:16px;animation:fadeUp .22s ease}
+.modal h3{margin-bottom:10px}
+.lesson{color:#cbd5e1;font-size:.9rem;line-height:1.85;white-space:pre-wrap}
+.lesson h4{color:#fff;margin:14px 0 6px;font-size:1rem}
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+@media(max-width:560px){.choice-grid{grid-template-columns:1fr}}
+.choice{border:1px solid var(--line);border-radius:16px;padding:18px;cursor:pointer;background:rgba(255,255,255,.03);transition:.2s}
+.choice:hover{border-color:#60a5fa;background:rgba(59,130,246,.12)}
+.choice h4{margin-bottom:6px}
+.choice p{color:var(--muted);font-size:.85rem;line-height:1.6}
+.empty{text-align:center;color:var(--muted);padding:24px;border:1px dashed var(--line);border-radius:14px}
+#view-screen{display:none;position:fixed;inset:0;z-index:100;background:#fff}
+#view-screen.show{display:block}
+.view-bar{height:36px;background:#0f172a;color:#e2e8f0;font-size:12px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;direction:ltr}
+#view-frame{width:100%;height:calc(100% - 36px);border:0}
+.toast-wrap{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:90;display:flex;flex-direction:column;gap:8px}
+.toast{background:#e2e8f0;color:#0f172a;padding:10px 14px;border-radius:12px;font-size:.86rem;font-weight:700}
+.footer-mini{text-align:center;color:#64748b;font-size:.78rem;padding:28px 0 8px}
+.tpl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:900px){.tpl-grid{grid-template-columns:repeat(2,1fr)}}
+.tpl{border-radius:14px;padding:14px;border:1px solid var(--line);cursor:pointer;background:linear-gradient(160deg,rgba(255,255,255,.04),rgba(59,130,246,.08))}
+.tpl:hover{border-color:rgba(96,165,250,.5)}
+.tpl h4{margin-bottom:4px;font-size:.9rem}.tpl p{color:var(--muted);font-size:.78rem}
+</style>
+</head>
+<body>
+<div id="intro"><div class="ring">🚀</div><div class="logo">LUMERA HOST</div><div class="sub">آماده‌سازی امن...</div></div>
+<section id="auth-screen">
+  <div class="auth-form-wrap"><div class="auth-box">
+    <div class="eyebrow">Lumera Studio</div>
+    <h1>ورود به Host</h1>
+    <p class="lead">برای تازه‌کارها هم ساده است: ایمیل و رمز، پروژه بساز، کد بنویس یا آپلود کن، لینک بگیر. بدون کد ایمیل.</p>
+    <div class="switch"><button type="button" class="on" id="tab-login">ورود</button><button type="button" id="tab-signup">ثبت‌نام</button></div>
+    <form id="auth-form">
+      <div class="field"><label>ایمیل</label><input id="auth-email" type="email" dir="ltr" required autocomplete="username"></div>
+      <div class="field"><label>رمز عبور</label><input id="auth-pass" type="password" dir="ltr" required minlength="6" autocomplete="current-password"></div>
+      <div class="field hidden" id="pass2-wrap"><label>تکرار رمز</label><input id="auth-pass2" type="password" dir="ltr" minlength="6" autocomplete="new-password"></div>
+      <button class="btn btn-main" type="submit" id="auth-submit">ورود</button>
+      <div class="msg" id="auth-msg"></div>
+    </form>
+  </div></div>
+  <aside class="auth-side">
+    <div class="orb a"></div>
+    <div><div class="mark">LUMERA HOST</div><h2>هاست امن برای صفحه‌های وب</h2><p>آموزش صفر تا صد، ویرایشگر کد، آپلود و لینک عمومی — با تأیید سمت سرور.</p></div>
+    <div class="chips"><span>امنیت بالا</span><span>آموزش</span><span>کدنویسی</span><span>رایگان</span></div>
+  </aside>
+</section>
+<section id="app-screen">
+  <header class="topbar">
+    <div class="brand"><b>LH</b> Lumera Host</div>
+    <div class="nav-links">
+      <button type="button" id="nav-home">خانه</button>
+      <button type="button" id="nav-projects">پروژه‌ها</button>
+      <button type="button" id="nav-ai">دستیار</button>
+    </div>
+    <div class="menu-wrap">
+      <button type="button" class="menu-btn" id="menu-btn">⋮</button>
+      <div class="dropdown hidden" id="menu-drop">
+        <div class="who"><strong id="menu-name">کاربر</strong><span id="menu-email"></span></div>
+        <button type="button" id="menu-projects">پروژه‌ها</button>
+        <button type="button" id="menu-logout">خروج</button>
+      </div>
+    </div>
+  </header>
+  <main class="content" id="main-content"></main>
+</section>
+<section id="view-screen">
+  <div class="view-bar"><span id="view-label">Lumera Host</span><a href="#" id="view-home" style="color:#93c5fd">Home</a></div>
+  <iframe id="view-frame" sandbox="allow-scripts allow-forms allow-modals allow-popups" referrerpolicy="no-referrer"></iframe>
+</section>
+<div class="toast-wrap" id="toasts"></div>
+<script>
+(function(){
+'use strict';
+var URL='https://cnvxbwdjuwczowaqgmia.supabase.co';
+var KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNudnhid2RqdXdjem93YXFnbWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5MzE5NDQsImV4cCI6MjEwNjUwNzk0NH0.OB5lXXhHQXdnHlJU5azIuHHZ8G339BSNl4aieTDKeX8';
+if(!window.supabase||!window.supabase.createClient){document.body.innerHTML='<p style="padding:2rem;direction:rtl;font-family:Tahoma">خطا در لود کتابخانه</p>';return;}
+var sb=window.supabase.createClient(URL,KEY,{global:{headers:{apikey:KEY,Authorization:'Bearer '+KEY}},auth:{persistSession:false,autoRefreshToken:false}});
+var SK='lh_sec_v5';
+var $=function(s,r){return(r||document).querySelector(s)};
+var intro=$('#intro'),authScreen=$('#auth-screen'),appScreen=$('#app-screen'),viewScreen=$('#view-screen'),main=$('#main-content');
+var mode='login',user=null,currentProject=null,allProjects=[];
+
+function toast(t){var el=document.createElement('div');el.className='toast';el.textContent=String(t).slice(0,180);$('#toasts').appendChild(el);setTimeout(function(){el.remove()},2200)}
+function saveUser(u){user=u;if(u){try{localStorage.setItem(SK,JSON.stringify({id:u.id,email:u.email,display_name:u.display_name,plan:u.plan||'free',project_limit:99999,t:Date.now()}))}catch(e){}}else try{localStorage.removeItem(SK)}catch(e){}}
+function loadUser(){try{var u=JSON.parse(localStorage.getItem(SK)||'null');if(u&&u.id&&u.email){user=u;return u}}catch(e){}user=null;return null}
+async function sha256(text){var buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0')}).join('')}
+async function passHash(email,pass){return sha256(String(email).toLowerCase().trim()+'|'+pass+'|lumera-host-v2')}
+function publicBase(){return location.origin+location.pathname.replace(/index\.html$/i,'')}
+function projectUrl(slug){return publicBase()+'?p='+encodeURIComponent(slug)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]})}
+function slugify(name){var base=String(name||'project').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,36)||'project';return base+'-'+Math.random().toString(36).slice(2,7)}
+function rpcData(res){var d=res&&res.data;if(typeof d==='string'){try{d=JSON.parse(d)}catch(e){}}return d}
+
+async function tryPublicView(){
+  var slug=new URLSearchParams(location.search).get('p');if(!slug)return false;
+  if(!/^[a-z0-9\-]{3,48}$/i.test(slug)){document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:Tahoma;direction:rtl">لینک نامعتبر</div>';return true}
+  intro.classList.add('hidden');authScreen.classList.remove('show');appScreen.classList.remove('show');viewScreen.classList.add('show');
+  $('#view-label').textContent='Lumera Host · '+slug;$('#view-home').href=publicBase();
+  try{
+    var res=await sb.from('host_projects').select('id,name,slug').eq('slug',slug).maybeSingle();
+    if(res.error||!res.data){document.body.innerHTML='<div style="padding:40px;text-align:center;font-family:Tahoma;direction:rtl"><h2>پروژه پیدا نشد</h2></div>';return true}
+    var fr=await sb.from('host_files').select('filename,content').eq('project_id',res.data.id);
+    var list=fr.data||[];
+    var htmlFile=list.find(function(f){return /^index\.html$/i.test(f.filename)})||list.find(function(f){return /\.html$/i.test(f.filename)})||list[0];
+    if(!htmlFile){$('#view-frame').srcdoc='<p style="padding:2rem;font-family:Tahoma;direction:rtl">فایلی نیست</p>';return true}
+    var body=htmlFile.content||'';
+    var css=list.filter(function(f){return /\.css$/i.test(f.filename)});
+    if(css.length&&!/<link[^>]+stylesheet/i.test(body)){
+      var styles=css.map(function(c){return '<style>'+c.content+'</style>'}).join('\n');
+      if(/<\/head>/i.test(body))body=body.replace(/<\/head>/i,styles+'</head>');else body=styles+body;
+    }
+    $('#view-frame').srcdoc=body;
+  }catch(e){$('#view-frame').srcdoc='<p style="padding:2rem;direction:rtl;font-family:Tahoma">خطا</p>'}
+  return true;
+}
+
+function finishIntro(showAuth){intro.style.opacity='0';intro.style.transition='opacity .4s ease';setTimeout(function(){intro.classList.add('hidden');if(showAuth)authScreen.classList.add('show')},400)}
+function setMode(m){mode=m;$('#tab-login').classList.toggle('on',m==='login');$('#tab-signup').classList.toggle('on',m==='signup');$('#pass2-wrap').classList.toggle('hidden',m==='login');$('#auth-submit').textContent=m==='login'?'ورود':'ثبت‌نام';$('#auth-msg').textContent='';$('#auth-msg').className='msg'}
+$('#tab-login').onclick=function(){setMode('login')};$('#tab-signup').onclick=function(){setMode('signup')};
+
+$('#auth-form').onsubmit=async function(e){
+  e.preventDefault();
+  var email=$('#auth-email').value.trim().toLowerCase();
+  var pass=$('#auth-pass').value;
+  var msg=$('#auth-msg'),btn=$('#auth-submit');
+  msg.className='msg';
+  if(!email||!pass){msg.className='msg err';msg.textContent='ایمیل و رمز لازم است';return}
+  btn.disabled=true;msg.textContent='صبر کنید...';
+  try{
+    var hash=await passHash(email,pass),data;
+    if(mode==='signup'){
+      if(pass!==$('#auth-pass2').value)throw new Error('تکرار رمز اشتباه است');
+      if(pass.length<6)throw new Error('رمز حداقل ۶ کاراکتر');
+      var reg=await sb.rpc('host_register',{p_email:email,p_hash:hash,p_name:email.split('@')[0]});
+      if(reg.error)throw reg.error;data=rpcData(reg);
+    }else{
+      var log=await sb.rpc('host_login',{p_email:email,p_hash:hash});
+      if(log.error)throw log.error;data=rpcData(log);
+    }
+    if(!data||data.ok===false)throw new Error((data&&data.error)||'خطا');
+    saveUser(data.user);toast(mode==='signup'?'ثبت‌نام موفق':'ورود موفق');bootApp();
+  }catch(err){
+    console.error(err);msg.className='msg err';
+    var t=(err&&err.message)||'خطا';
+    if(/Could not find the function|PGRST202|404/i.test(t))t='SQL امنیتی جدید را در Supabase Run کن.';
+    msg.textContent=t;
+  }finally{btn.disabled=false}
+};
+
+$('#menu-btn').onclick=function(e){e.stopPropagation();$('#menu-drop').classList.toggle('hidden')};
+document.addEventListener('click',function(){$('#menu-drop').classList.add('hidden')});
+$('#menu-logout').onclick=function(){saveUser(null);currentProject=null;appScreen.classList.remove('show');authScreen.classList.add('show');toast('خارج شدی')};
+$('#menu-projects').onclick=function(){currentProject=null;renderHome(true)};
+$('#nav-home').onclick=function(){currentProject=null;renderHome(false)};
+$('#nav-projects').onclick=function(){currentProject=null;renderHome(true)};
+$('#nav-ai').onclick=function(){currentProject=null;renderHome(false);setTimeout(function(){var el=document.getElementById('ai');if(el)el.scrollIntoView({behavior:'smooth'})},80)};
+
+function bootApp(){
+  if(!user)return;
+  authScreen.classList.remove('show');appScreen.classList.add('show');
+  $('#menu-name').textContent=user.display_name||(user.email||'').split('@')[0];
+  $('#menu-email').textContent=user.email||'';
+  renderHome(false);
+}
+
+var LESSON=`آموزش صفر تا صد ساخت صفحه وب (برای تازه‌کارها)
+
+۱) HTML چیست؟
+HTML اسکلت صفحه است. هر صفحه معمولاً با این شروع می‌شود:
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>عنوان صفحه</title>
+</head>
+<body>
+  <h1>سلام دنیا</h1>
+  <p>اولین صفحه‌ام روی لومرا هاست</p>
+</body>
+</html>
+
+۲) تگ‌های پرکاربرد
+- h1 تا h6 : عنوان
+- p : پاراگراف
+- a href="..." : لینک
+- img src="..." alt="..." : تصویر
+- div و span : جعبه و متن درون‌خطی
+- ul/ol و li : لیست
+- button : دکمه
+
+۳) CSS چیست؟
+CSS ظاهر را قشنگ می‌کند. می‌توانی داخل <style> در head بنویسی:
+
+body {
+  font-family: Tahoma, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  margin: 0;
+  padding: 24px;
+}
+h1 { color: #38bdf8; }
+
+۴) کمی JavaScript
+برای دکمه و تعامل:
+
+<button onclick="alert('سلام!')">کلیک کن</button>
+
+یا:
+
+<script>
+function hi(){ alert('سلام از لومرا هاست'); }
+<\/script>
+<button onclick="hi()">اجرا</button>
+
+۵) مسیر پیشنهادی یادگیری
+روز ۱: یک صفحه با عنوان و متن
+روز ۲: رنگ و فونت با CSS
+روز ۳: دکمه و لیست
+روز ۴: چند بخش (header، main، footer)
+روز ۵: صفحه شخصی خودت را منتشر کن
+
+۶) کار در لومرا هاست
+1. پروژه بساز
+2. فایل index.html بساز یا آپلود کن
+3. کد را ذخیره کن
+4. لینک عمومی را کپی کن و برای دوستت بفرست
+
+۷) اشتباهات رایج
+- فراموش کردن charset=UTF-8 (برای فارسی مهم است)
+- dir="rtl" نگذاشتن
+- اسم فایل را index.html نگذاشتن (برای صفحه اصلی)
+- گذاشتن مسیر عجیب در نام فایل
+
+حالا «شروع کدنویسی» را بزن و اولین صفحه‌ات را بنویس.`;
+
+function templateHTML(id,name){
+  var n=esc(name||'پروژه');
+  if(id==='card')return '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>'+n+'</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0f172a;font-family:Tahoma,sans-serif;color:#e2e8f0}.c{width:min(340px,92vw);background:#1e293b;border:1px solid #334155;border-radius:20px;padding:28px;text-align:center}.av{width:72px;height:72px;border-radius:50%;margin:0 auto 14px;background:linear-gradient(135deg,#3b82f6,#22d3ee)}h1{margin:0 0 6px;font-size:1.2rem}p{margin:0;color:#94a3b8}</style></head><body><div class="c"><div class="av"></div><h1>'+n+'</h1><p>پروفایل روی Lumera Host</p></div></body></html>';
+  if(id==='gallery')return '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>'+n+'</title><style>body{margin:0;padding:24px;font-family:Tahoma,sans-serif;background:#020617;color:#e2e8f0}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}.b{height:90px;border-radius:14px}</style></head><body><h1>'+n+'</h1><div class="g"><div class="b" style="background:#3b82f6"></div><div class="b" style="background:#22d3ee"></div><div class="b" style="background:#a78bfa"></div><div class="b" style="background:#34d399"></div></div></body></html>';
+  if(id==='counter')return '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>'+n+'</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b1220;font-family:Tahoma,sans-serif;color:#fff}#n{font-size:3rem;font-weight:900;margin:12px 0}button{border:0;background:#3b82f6;color:#fff;padding:12px 18px;border-radius:12px;font-weight:800;cursor:pointer;margin:0 4px}</style></head><body><div style="text-align:center"><div>شمارنده</div><div id="n">0</div><button onclick="n.textContent=+n.textContent+1">+</button><button onclick="n.textContent=+n.textContent-1">−</button></div></body></html>';
+  return '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>'+n+'</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Tahoma,sans-serif;background:linear-gradient(160deg,#0f172a,#1e3a8a);color:#e2e8f0}.box{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:2rem;border-radius:18px;text-align:center}h1{margin:0 0 .5rem}</style></head><body><div class="box"><h1>'+n+'</h1><p style="color:#94a3b8;margin:0">روی Lumera Host</p></div></body></html>';
+}
+
+async function renderHome(scrollProjects){
+  currentProject=null;
+  var pr=await sb.rpc('host_list_projects',{p_user_id:user.id});
+  var list=[];
+  try{list=rpcData(pr)||[];if(!Array.isArray(list))list=[]}catch(e){list=[]}
+  // fallback if RPC missing (old SQL)
+  if((!list||!list.length)&&pr&&pr.error){
+    var fb=await sb.from('host_projects').select('*').eq('user_id',user.id).order('created_at',{ascending:false});
+    list=fb.data||[];
+  }
+  allProjects=list;
+
+  var feats=[
+    ['🚀','انتشار سریع','لینک عمومی بگیر و صفحه را نشان بده'],
+    ['📚','آموزش صفر تا صد','برای کسی که تازه کد یاد گرفته'],
+    ['💻','ویرایشگر کد','کنار آپلود، مستقیم کد بنویس'],
+    ['∞','پروژه نامحدود','فعلاً رایگان'],
+    ['🔒','تأیید سرور','عملیات حساس فقط با RPC'],
+    ['📁','چند فایلی','HTML و CSS و JS با هم'],
+    ['🔎','جستجو','پروژه‌ها را سریع پیدا کن'],
+    ['👁️','پیش‌نمایش','قبل از اشتراک ببین'],
+    ['📥','دانلود','فایل را ذخیره کن'],
+    ['🧩','قالب آماده','با یک کلیک شروع کن'],
+    ['🤖','دستیار هوشمند','سوال درباره لومرا هاست بپرس'],
+    ['📱','موبایل‌فرندلی','روی گوشی هم راحت']
+  ].map(function(f,i){return '<div class="feat" style="animation-delay:'+(i*0.02)+'s"><div class="ico">'+f[0]+'</div><h3>'+f[1]+'</h3><p>'+f[2]+'</p></div>'}).join('');
+
+  main.innerHTML=
+    '<section class="hero"><div class="hero-bg"></div><div class="hero-inner"><div>'+
+    '<h1>خانه <span>Lumera Host</span></h1>'+
+    '<p>اگر تازه‌کاری، اول از آموزش داخل «ساخت فایل» استفاده کن. پروژه‌های سنگین را لازم نیست اول راه برداری — از یک صفحه ساده شروع کن. پایین همین صفحه دستیار مخصوص لومرا هاست منتظر سوال توست.</p>'+
+    '<div class="hero-cta"><button type="button" class="btn btn-green" id="btn-new">+ پروژه جدید</button><button type="button" class="btn btn-soft" id="btn-jump">پروژه‌های من</button><button type="button" class="btn btn-soft" id="btn-ai">پرسش از دستیار</button></div>'+
+    '</div><div class="hero-card"><div style="font-size:1.8rem">🛡️</div><div style="margin-top:6px;font-weight:800">حساب امن</div><div style="color:var(--muted);font-size:.85rem;margin-top:4px">'+esc(user.email||'')+'</div>'+
+    '<div class="row"><div><b>'+list.length+'</b><span>پروژه</span></div><div><b>∞</b><span>سقف</span></div><div><b>ON</b><span>سرور</span></div></div></div></div></section>'+
+    '<section class="section" id="features"><div class="section-title"><h2>امکانات</h2><p>همه چیز برای شروع راحت و انتشار امن</p></div><div class="feat-grid">'+feats+'</div></section>'+
+    '<section class="section" id="ai"><div class="section-title"><h2>دستیار لومرا هاست</h2><p>زیر بخش پروژه‌های سنگین / شروع ساده — همیشه درباره همین سایت جواب می‌دهد</p></div>'+
+    '<div class="ai-box"><h3>🤖 بپرس</h3><div class="hint">مثال: چطور لینک عمومی بگیرم؟ آموزش کدنویسی کجاست؟ آیا رایگان است؟</div>'+
+    '<div class="ai-log" id="ai-log"></div><div class="ai-row"><input id="ai-q" placeholder="سوالت را بنویس..."><button type="button" class="btn btn-main" id="ai-send" style="width:auto">ارسال</button></div></div></section>'+
+    '<section class="section" id="templates"><div class="section-title"><h2>قالب آماده</h2><p>برای تازه‌کارها</p></div><div class="tpl-grid">'+
+    '<div class="tpl" data-tpl="landing"><h4>لندینگ</h4><p>صفحه معرفی ساده</p></div>'+
+    '<div class="tpl" data-tpl="card"><h4>کارت پروفایل</h4><p>کارت شخصی</p></div>'+
+    '<div class="tpl" data-tpl="gallery"><h4>گالری رنگی</h4><p>جعبه‌های رنگی</p></div>'+
+    '<div class="tpl" data-tpl="counter"><h4>شمارنده</h4><p>دکمه تعاملی</p></div></div></section>'+
+    '<section class="section" id="projects"><div class="section-title" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:end"><div><h2>پروژه‌های من</h2><p>مدیریت و انتشار</p></div><div class="tools"><input class="search" id="search" placeholder="جستجو..."><button type="button" class="btn btn-green" id="btn-new2" style="width:auto">+ جدید</button></div></div>'+
+    '<div class="projects-panel"><div class="plist" id="plist"></div></div></section>'+
+    '<div class="footer-mini">Lumera Host · عملیات حساس فقط روی سرور تأیید می‌شود</div>';
+
+  function paint(items){
+    var box=$('#plist');
+    if(!items.length){box.innerHTML='<div class="empty">هنوز پروژه‌ای نداری. «پروژه جدید» یا یک قالب را بزن.</div>';return}
+    box.innerHTML=items.map(function(p){
+      return '<div class="prow" data-id="'+p.id+'"><div><div class="n">'+esc(p.name)+'</div><div class="s">'+esc(projectUrl(p.slug))+'</div></div><div class="acts">'+
+        '<button type="button" class="btn btn-soft btn-open">باز کردن</button>'+
+        '<button type="button" class="btn btn-soft btn-prev">پیش‌نمایش</button>'+
+        '<button type="button" class="btn btn-soft btn-copy">کپی</button>'+
+        '<button type="button" class="btn btn-soft btn-ren">نام</button>'+
+        '<button type="button" class="btn btn-danger btn-del">حذف</button></div></div>';
+    }).join('');
+    box.querySelectorAll('.prow').forEach(function(row){
+      var p=items.find(function(x){return x.id===row.getAttribute('data-id')});
+      row.querySelector('.btn-open').onclick=function(){openProject(p)};
+      row.querySelector('.btn-prev').onclick=function(){window.open(projectUrl(p.slug),'_blank','noopener,noreferrer')};
+      row.querySelector('.btn-copy').onclick=async function(){try{await navigator.clipboard.writeText(projectUrl(p.slug));toast('کپی شد')}catch(e){prompt('لینک',projectUrl(p.slug))}};
+      row.querySelector('.btn-ren').onclick=async function(){
+        var name=prompt('نام جدید',p.name);if(!name||name===p.name)return;
+        var r=await sb.rpc('host_rename_project',{p_user_id:user.id,p_project_id:p.id,p_name:name.trim()});
+        var d=rpcData(r);if(r.error||(d&&d.ok===false)){toast((d&&d.error)||(r.error&&r.error.message)||'خطا');return}
+        toast('نام عوض شد');renderHome(true);
+      };
+      row.querySelector('.btn-del').onclick=async function(){
+        if(!confirm('حذف «'+p.name+'»؟'))return;
+        var r=await sb.rpc('host_delete_project',{p_user_id:user.id,p_project_id:p.id});
+        var d=rpcData(r);if(r.error||(d&&d.ok===false)){toast((d&&d.error)||'خطا');return}
+        toast('حذف شد');renderHome(true);
+      };
+    });
+  }
+  paint(list);
+  $('#search').oninput=function(){var q=this.value.trim().toLowerCase();paint(allProjects.filter(function(p){return!q||String(p.name).toLowerCase().indexOf(q)>=0||String(p.slug).toLowerCase().indexOf(q)>=0}))};
+
+  async function createProject(name,tplId){
+    var slug=slugify(name);
+    var r=await sb.rpc('host_create_project',{p_user_id:user.id,p_name:name.trim(),p_slug:slug});
+    var d=rpcData(r);
+    if(r.error||!d||d.ok===false){
+      // fallback old schema
+      var ins=await sb.from('host_projects').insert({user_id:user.id,name:name.trim(),slug:slug}).select().single();
+      if(ins.error){toast(ins.error.message);return}
+      d={ok:true,project:ins.data};
+    }
+    var proj=d.project;
+    var content=templateHTML(tplId||'landing',name);
+    var up=await sb.rpc('host_upsert_file',{p_user_id:user.id,p_project_id:proj.id,p_filename:'index.html',p_content:content,p_file_id:null});
+    if(up.error){await sb.from('host_files').insert({project_id:proj.id,filename:'index.html',content:content})}
+    toast('پروژه ساخته شد');openProject(proj);
+  }
+  function onNew(){var name=prompt('نام پروژه','my-site');if(!name)return;createProject(name,'landing')}
+  $('#btn-new').onclick=onNew;$('#btn-new2').onclick=onNew;
+  $('#btn-jump').onclick=function(){var el=document.getElementById('projects');if(el)el.scrollIntoView({behavior:'smooth'})};
+  $('#btn-ai').onclick=function(){var el=document.getElementById('ai');if(el)el.scrollIntoView({behavior:'smooth'});$('#ai-q').focus()};
+  document.querySelectorAll('.tpl').forEach(function(el){el.onclick=function(){var id=el.getAttribute('data-tpl');var name=prompt('نام پروژه',el.querySelector('h4').textContent);if(!name)return;createProject(name,id)}});
+
+  // AI
+  var log=$('#ai-log');
+  function addMsg(role,text){var d=document.createElement('div');d.className='ai-msg '+(role==='user'?'user':'bot');d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight}
+  addMsg('bot','سلام! من دستیار لومرا هاست هستم. درباره ورود، پروژه، فایل، آموزش و لینک عمومی بپرس.');
+  async function askAI(){
+    var q=$('#ai-q').value.trim();if(!q)return;
+    $('#ai-q').value='';addMsg('user',q);
+    addMsg('bot','در حال فکر کردن...');
+    var thinking=log.lastChild;
+    try{
+      var r=await sb.rpc('host_ai_ask',{p_user_id:user.id,p_question:q});
+      var d=rpcData(r);
+      if(r.error||!d||d.ok===false){
+        // local fallback knowledge (still works)
+        var ans=localAI(q);
+        thinking.textContent=ans;
+      }else thinking.textContent=d.answer||localAI(q);
+    }catch(e){thinking.textContent=localAI(q)}
+  }
+  $('#ai-send').onclick=askAI;
+  $('#ai-q').onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();askAI()}};
+
+  if(scrollProjects){setTimeout(function(){var el=document.getElementById('projects');if(el)el.scrollIntoView({behavior:'smooth'})},40)}
+  else window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function localAI(q){
+  q=String(q||'').toLowerCase();
+  if(/ثبت|ورود|لاگین|login|signup/.test(q))return 'فقط ایمیل و رمز لازم است. کد ایمیل نمی‌آید. اول ثبت‌نام کن، بعد ورود.';
+  if(/لینک|منتشر|عمومی/.test(q))return 'داخل پروژه لینک را کپی کن. شکل آن: آدرس سایت + ?p=نام-پروژه';
+  if(/آموزش|یاد|کدنویسی|html/.test(q))return 'پروژه را باز کن → «ساخت فایل / کدنویسی» → «آموزش». از صفر تا صد نوشته شده است.';
+  if(/فایل|آپلود|ویرایش/.test(q))return 'در پروژه هم آپلود داری هم ساخت فایل. ذخیره از طریق سرور انجام می‌شود.';
+  if(/رایگان|پول|هزینه/.test(q))return 'فعلاً رایگان و پروژه نامحدود است.';
+  if(/امنیت|هک/.test(q))return 'رمز هش می‌شود، نوشتن فایل/پروژه فقط با توابع سرور و مالک پروژه، محدودیت نرخ و لاگ امنیتی فعال است.';
+  return 'سوالت را درباره لومرا هاست واضح‌تر بپرس. مثلاً: چطور پروژه بسازم؟ آموزش کجاست؟ لینک عمومی چیست؟';
+}
+
+async function openProject(p){
+  currentProject=p;
+  var list=[];
+  var fr=await sb.rpc('host_list_files',{p_user_id:user.id,p_project_id:p.id});
+  list=rpcData(fr)||[];
+  if(!Array.isArray(list)||(fr&&fr.error)){
+    var fb=await sb.from('host_files').select('*').eq('project_id',p.id).order('filename');
+    list=fb.data||[];
+  }
+  var url=projectUrl(p.slug);
+  main.innerHTML=
+    '<div class="ws-head"><div><button type="button" class="btn btn-soft" id="back">→ خانه</button>'+
+    '<h2 style="margin-top:10px;font-size:1.25rem">'+esc(p.name)+'</h2><div style="color:var(--muted);font-size:.82rem;margin-top:4px">'+list.length+' فایل</div></div>'+
+    '<div class="linkbar"><code>'+esc(url)+'</code><button type="button" class="btn btn-main" id="copy" style="width:auto;padding:8px 12px">کپی</button>'+
+    '<a class="btn btn-soft" href="'+url+'" target="_blank" rel="noopener noreferrer" style="width:auto">باز کردن</a></div></div>'+
+    '<div class="grid-files">'+
+      '<div class="card-block"><h3 style="margin-bottom:8px">📁 آپلود فایل</h3><p style="color:var(--muted);font-size:.85rem;line-height:1.6;margin-bottom:8px">فایل آماده داری؟ اینجا رها کن. HTML / CSS / JS / TXT</p>'+
+      '<div class="flist" id="flist"></div>'+
+      '<div class="drop" id="drop"><div style="font-weight:800;color:var(--cyan)">بکش و رها کن</div><input type="file" id="fin" multiple accept=".html,.htm,.css,.js,.txt,.json,.svg,.md,text/*"></div></div>'+
+      '<div class="card-block"><h3 style="margin-bottom:8px">💻 ساخت فایل / کدنویسی</h3><p style="color:var(--muted);font-size:.85rem;line-height:1.6;margin-bottom:10px">تازه‌کاری؟ اول آموزش را بخوان. بلدی؟ مستقیم کد بنویس.</p>'+
+      '<button type="button" class="btn btn-green" id="btn-code" style="width:100%">باز کردن کارگاه کد</button>'+
+      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-soft" id="btn-blank">HTML خالی</button><button type="button" class="btn btn-soft" id="btn-newf">نام دلخواه</button></div></div>'+
+    '</div>';
+
+  $('#back').onclick=function(){renderHome(false)};
+  $('#copy').onclick=async function(){try{await navigator.clipboard.writeText(url);toast('کپی شد')}catch(e){prompt('لینک',url)}};
+
+  var fl=$('#flist');
+  function paint(items){
+    if(!items.length){fl.innerHTML='<div class="empty">فایلی نیست</div>';return}
+    fl.innerHTML=items.map(function(f){
+      var size=new Blob([f.content||'']).size;
+      return '<div class="frow" data-id="'+f.id+'"><div><div class="fn">'+esc(f.filename)+'</div><div style="font-size:.72rem;color:#64748b">'+size+' بایت</div></div><div class="acts">'+
+        '<button type="button" class="btn btn-soft btn-ed">ویرایش</button>'+
+        '<button type="button" class="btn btn-soft btn-dl">دانلود</button>'+
+        '<button type="button" class="btn btn-danger btn-rm">حذف</button></div></div>';
+    }).join('');
+    fl.querySelectorAll('.frow').forEach(function(row){
+      var f=items.find(function(x){return x.id===row.getAttribute('data-id')});
+      row.querySelector('.btn-ed').onclick=function(){openEditor(f)};
+      row.querySelector('.btn-dl').onclick=function(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([f.content||''],{type:'text/plain;charset=utf-8'}));a.download=f.filename||'file.txt';a.click()};
+      row.querySelector('.btn-rm').onclick=async function(){
+        if(!confirm('حذف؟'))return;
+        var r=await sb.rpc('host_delete_file',{p_user_id:user.id,p_file_id:f.id});
+        if(r.error){await sb.from('host_files').delete().eq('id',f.id)}
+        toast('حذف شد');openProject(p);
+      };
+    });
+  }
+  paint(list);
+
+  var drop=$('#drop'),fin=$('#fin');
+  drop.addEventListener('dragover',function(e){e.preventDefault();drop.classList.add('on')});
+  drop.addEventListener('dragleave',function(){drop.classList.remove('on')});
+  drop.addEventListener('drop',function(e){e.preventDefault();drop.classList.remove('on');if(e.dataTransfer.files)uploadFiles(e.dataTransfer.files)});
+  fin.onchange=function(){uploadFiles(fin.files)};
+
+  async function saveFile(filename,content,fileId){
+    var r=await sb.rpc('host_upsert_file',{p_user_id:user.id,p_project_id:p.id,p_filename:filename,p_content:content,p_file_id:fileId||null});
+    var d=rpcData(r);
+    if(r.error||(d&&d.ok===false)){
+      // fallback
+      if(fileId){var u=await sb.from('host_files').update({filename:filename,content:content,updated_at:new Date().toISOString()}).eq('id',fileId);if(u.error)throw u.error}
+      else{var i=await sb.from('host_files').upsert({project_id:p.id,filename:filename,content:content},{onConflict:'project_id,filename'});if(i.error)throw i.error}
+    }
+  }
+  async function uploadFiles(fileList){
+    var arr=Array.from(fileList||[]);
+    for(var i=0;i<arr.length;i++){
+      var file=arr[i];if(file.size>500000){toast(file.name+' خیلی بزرگ است');continue}
+      var text=await file.text();
+      try{await saveFile(file.name||'file.txt',text,null)}catch(e){toast(e.message||'خطا')}
+    }
+    toast('ذخیره شد');openProject(p);
+  }
+
+  $('#btn-code').onclick=function(){openCodeWorkshop(p,list)};
+  $('#btn-blank').onclick=async function(){
+    try{await saveFile('blank-'+Date.now()+'.html','<!DOCTYPE html>\n<html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>Blank</title></head><body style="font-family:Tahoma;padding:2rem;background:#0f172a;color:#e2e8f0"><h1>صفحه خالی</h1></body></html>',null);toast('ساخته شد');openProject(p)}catch(e){toast(e.message||'خطا')}
+  };
+  $('#btn-newf').onclick=async function(){
+    var filename=prompt('نام فایل','page.html');if(!filename)return;
+    var content=/\.html?$/i.test(filename)?'<!DOCTYPE html>\n<html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>New</title></head><body><h1>Hello</h1></body></html>':'';
+    try{await saveFile(filename,content,null);toast('ساخته شد');openProject(p)}catch(e){toast(e.message||'خطا')}
+  };
+
+  function openEditor(file){
+    var back=document.createElement('div');back.className='modal-back';
+    back.innerHTML='<div class="modal"><h3>ویرایش · '+esc(file.filename)+'</h3>'+
+      '<div class="field"><label>نام فایل</label><input id="ed-name" dir="ltr" value="'+esc(file.filename)+'"></div>'+
+      '<div class="field"><label>کد</label><textarea class="code-area" id="ed-body" spellcheck="false"></textarea></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button type="button" class="btn btn-main" id="ed-save" style="width:auto">ذخیره روی سرور</button><button type="button" class="btn btn-soft" id="ed-cancel" style="width:auto">بستن</button></div></div>';
+    document.body.appendChild(back);
+    back.querySelector('#ed-body').value=file.content||'';
+    back.querySelector('#ed-cancel').onclick=function(){back.remove()};
+    back.onclick=function(e){if(e.target===back)back.remove()};
+    back.querySelector('#ed-save').onclick=async function(){
+      var filename=back.querySelector('#ed-name').value.trim();
+      var content=back.querySelector('#ed-body').value;
+      if(!filename){toast('نام فایل لازم است');return}
+      try{await saveFile(filename,content,file.id);back.remove();toast('ذخیره شد');openProject(p)}catch(e){toast(e.message||'خطا')}
+    };
+  }
+
+  function openCodeWorkshop(project,files){
+    var back=document.createElement('div');back.className='modal-back';
+    back.innerHTML='<div class="modal"><h3>کارگاه کدنویسی</h3><p style="color:var(--muted);font-size:.9rem;line-height:1.7;margin-bottom:8px">برای تازه‌کارها آموزش گذاشتیم. اگر بلدی رد کن.</p>'+
+      '<div class="choice-grid" id="choice">'+
+      '<div class="choice" id="c-lesson"><h4>📚 آموزش</h4><p>از صفر تا صد کدنویسی صفحه وب را بخوان، بعد کد بزن.</p></div>'+
+      '<div class="choice" id="c-skip"><h4>⏭️ رد کردن آموزش</h4><p>مستقیم برو به ویرایشگر و فایل بساز.</p></div>'+
+      '</div><div id="ws-body"></div>'+
+      '<div style="margin-top:12px"><button type="button" class="btn btn-soft" id="ws-close" style="width:auto">بستن</button></div></div>';
+    document.body.appendChild(back);
+    $('#ws-close',back).onclick=function(){back.remove()};
+    back.onclick=function(e){if(e.target===back)back.remove()};
+
+    function showEditor(){
+      var body=$('#ws-body',back);$('#choice',back).classList.add('hidden');
+      body.innerHTML='<div class="field"><label>نام فایل</label><input id="ws-name" dir="ltr" value="index.html"></div>'+
+        '<div class="field"><label>کد</label><textarea class="code-area" id="ws-code" spellcheck="false"></textarea></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-main" id="ws-save" style="width:auto">ذخیره روی سرور</button>'+
+        '<button type="button" class="btn btn-soft" id="ws-sample" style="width:auto">نمونه آماده</button></div>';
+      var existing=(files||[]).find(function(f){return /^index\.html$/i.test(f.filename)});
+      $('#ws-code',back).value=existing?existing.content:templateHTML('landing',project.name);
+      if(existing)$('#ws-name',back).value=existing.filename;
+      $('#ws-sample',back).onclick=function(){$('#ws-code',back).value=templateHTML('landing',project.name);toast('نمونه گذاشته شد')};
+      $('#ws-save',back).onclick=async function(){
+        var filename=$('#ws-name',back).value.trim();
+        var content=$('#ws-code',back).value;
+        if(!filename){toast('نام فایل لازم است');return}
+        try{
+          await saveFile(filename,content,existing?existing.id:null);
+          toast('ذخیره شد');back.remove();openProject(project);
+        }catch(e){toast(e.message||'خطا')}
+      };
+    }
+    function showLesson(){
+      var body=$('#ws-body',back);$('#choice',back).classList.add('hidden');
+      body.innerHTML='<div class="lesson"></div><div style="margin-top:12px"><button type="button" class="btn btn-green" id="ws-start" style="width:auto">شروع کدنویسی</button></div>';
+      body.querySelector('.lesson').textContent=LESSON;
+      $('#ws-start',back).onclick=showEditor;
+    }
+    $('#c-lesson',back).onclick=showLesson;
+    $('#c-skip',back).onclick=showEditor;
+  }
+}
+
+(async function init(){
+  if(await tryPublicView())return;
+  var has=!!loadUser();
+  setTimeout(function(){finishIntro(!has);if(has)bootApp()},1500);
+})();
+})();
+</script>
+</body>
+</html>
